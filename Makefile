@@ -19,7 +19,7 @@ $(OUTPUT_DIR)/boot.o: boot.s | dirs
 	$(AS) boot.s -o $@
 
 $(OUTPUT_DIR)/kernel.o: kernel.c | dirs
-	$(CC) $(CFLAGS) -c kernel.c -o $@
+	$(CC) -c kernel.c -o $@ $(CFLAGS)
 
 $(OUTPUT_DIR)/kernel.bin: $(OUTPUT_DIR)/boot.o $(OUTPUT_DIR)/kernel.o
 	$(CC) $(LDFLAGS) -o $(OUTPUT_DIR)/kernel.bin -ffreestanding -O2 -nostdlib $^ -lgcc
@@ -28,20 +28,21 @@ $(OUTPUT_DIR)/glacieros.iso: $(OUTPUT_DIR)/kernel.bin
 	mkdir -p $(OUTPUT_DIR)/boot/
 
 	cp $(OUTPUT_DIR)/kernel.bin $(OUTPUT_DIR)/boot/kernel.bin
-	cp boot/limine.cfg $(OUTPUT_DIR)/
-	cp $(LIMINE_DIR)/limine.sys $(OUTPUT_DIR)/
-	cp $(LIMINE_DIR)/limine.bin $(OUTPUT_DIR)/
+	cp boot/limine.conf $(OUTPUT_DIR)/
+	cp $(LIMINE_DIR)/limine-bios.sys $(OUTPUT_DIR)/
+	cp $(LIMINE_DIR)/limine-bios-cd.bin $(OUTPUT_DIR)/
+	cp $(LIMINE_DIR)/limine-uefi-cd.bin $(OUTPUT_DIR)/
 
-	xorriso -as mkisofs \
-		-b limine.bin \
-		-c limine.sys \
-		-no-emul-boot \
-		-boot-load-size 4 \
-		-boot-info-table \
+	xorriso -as mkisofs -R -r -J \
+		-b limine-bios-cd.bin \
+		-no-emul-boot -boot-load-size 4 -boot-info-table -hfsplus \
+		-apm-block-size 2048 \
+		--efi-boot limine-uefi-cd.bin \
+		-efi-boot-part --efi-boot-image --protective-msdos-label \
 		-o $@ \
 		$(OUTPUT_DIR)
 
-	$(LIMINE_DIR)/limine-install $@
+	$(LIMINE_DIR)/limine bios-install $@
 
 run: $(OUTPUT_DIR)/glacieros.iso
 	qemu-system-i386 -cdrom $<
@@ -66,6 +67,8 @@ install-deps:
 	@if [ ! -d "$(LIMINE_DIR)" ]; then \
 		echo "[*] Cloning Limine binary release to $(LIMINE_DIR)..."; \
 		git clone --branch=v9.x-binary --depth=1 https://github.com/limine-bootloader/limine.git $(LIMINE_DIR); \
+		echo "[*] Building Limine..."; \
+		$(MAKE) -C $(LIMINE_DIR); \
 	else \
 		echo "[*] Limine binary release already exists in $(LIMINE_DIR), skipping clone."; \
 	fi
