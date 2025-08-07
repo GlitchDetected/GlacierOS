@@ -28,7 +28,7 @@ $(OUTPUT_DIR)/glacieros.iso: $(OUTPUT_DIR)/kernel.bin
 	mkdir -p $(OUTPUT_DIR)/boot/
 
 	cp $(OUTPUT_DIR)/kernel.bin $(OUTPUT_DIR)/boot/kernel.bin
-	cp boot/limine.conf $(OUTPUT_DIR)/
+	cp boot/limine.conf $(OUTPUT_DIR)/boot/limine.conf
 	cp $(LIMINE_DIR)/limine-bios.sys $(OUTPUT_DIR)/
 	cp $(LIMINE_DIR)/limine-bios-cd.bin $(OUTPUT_DIR)/
 	cp $(LIMINE_DIR)/limine-uefi-cd.bin $(OUTPUT_DIR)/
