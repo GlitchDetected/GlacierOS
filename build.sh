@@ -5,9 +5,10 @@
 # ./build.sh
 set -e
 
-PREFIX="$HOME/opt/cross"
+PREFIX="$HOME/compiled"
 TARGET=i686-elf
 PATH="$PREFIX/bin:$PATH"
+mkdir -p "$PREFIX"
 
 install_deps() {
     if ! port installed "$1" | grep -q "active"; then
@@ -29,6 +30,14 @@ missing_file() {
     fi
 }
 
+if_binary_exists() {
+    ls "$PREFIX/bin"/i686-elf-* >/dev/null 2>&1
+}
+
+in_correct_path() {
+    command -v i686-elf-gcc >/dev/null 2>&1
+}
+
 echo "[*] Checking and installing dependencies if missing..."
 install_deps gmp
 install_deps mpfr
@@ -44,10 +53,15 @@ install_deps libiconv
 mkdir -p ~/cross-compilers
 cd ~/cross-compilers
 
-# Build binutils
-if command -v i686-elf-as >/dev/null 2>&1; then
-    echo "[*] Binutils already installed, skipping binutils build."
-else
+if if_binary_exists && in_correct_path; then
+    echo "[*] Binutils and GCC already installed and in PATH, skipping build."
+    exit 0
+elif if_binary_exists && ! in_correct_path; then
+    echo "[*] Cross-compiler binaries found but NOT in PATH."
+    echo "[*] Please add $PREFIX/bin to your PATH before running this script."
+    exit 1
+fi
+
     echo "[*] Building binutils..."
     missing_file https://ftp.gnu.org/gnu/binutils/binutils-2.41.tar.xz
     tar -xf binutils-2.41.tar.xz
@@ -56,15 +70,10 @@ else
     make -j"$(sysctl -n hw.ncpu)"
     make install
     cd ..
-fi
 
-if command -v i686-elf-gcc >/dev/null 2>&1; then
-    echo "[*] Cross GCC already installed, skipping GCC build."
-else
     echo "[*] Building GCC..."
     missing_file https://ftp.gnu.org/gnu/gcc/gcc-13.2.0/gcc-13.2.0.tar.xz
     tar -xf gcc-13.2.0.tar.xz
-
     mkdir build-gcc && cd build-gcc
     ../gcc-13.2.0/configure \
       --target=$TARGET \
@@ -77,7 +86,7 @@ else
     make all-target-libgcc -j$(sysctl -n hw.ncpu)
     make install-gcc
     make install-target-libgcc
-fi
+    cd ..
 
 echo "Cross compiler build completed"
 echo
