@@ -84,6 +84,7 @@ sector_same_segment:
 
     /* jmp to flush prefetch queue */
     jmp flush
+
 flush:
     lidt idt
     lgdt gdtp

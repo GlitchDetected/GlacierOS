@@ -4,6 +4,9 @@
 #include "./drivers/display.h"
 #include "./drivers/keyboard.h"
 
+#include <stddef.h>
+#include <stdint.h>
+
 #include "utils.h"
 #include "memory.h"
 
@@ -29,6 +32,7 @@ void* alloc(int n) {
 
 void start_kernel() {
     clear_screen();
+
     print_string("Installing interrupt service routines (ISRs).\n");
     isr_install();
 

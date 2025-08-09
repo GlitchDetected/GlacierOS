@@ -24,7 +24,7 @@ OBJ_SRCS= $(C_SRCS:.c=.o) $(S_SRCS:.s=.o)
 BOOTSECT=bootsect.bin
 KERNEL=kernel.bin
 
-all: dirs ${C_SRCS} ${HEADER_SRCS} kernel bootsect
+all: dirs ${C_SRCS} ${HEADER_SRCS} bootsect kernel
 
 dirs:
 	mkdir -p bin
@@ -61,3 +61,4 @@ clean:
 	$(RM) src/boot/*.o src/boot/*.bin
 	$(RM) src/kernel/drivers/*.o
 	$(RM) src/kernel/cpu/*.o
+	$(RM) *.iso
