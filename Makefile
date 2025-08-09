@@ -1,74 +1,63 @@
+# $@ = target file
+# $< = first dependency
+# $^ = all dependencies
+
 TARGET   = i686-elf
 CC       = $(TARGET)-gcc
 LD       = $(TARGET)-ld
-AS       = $(TARGET)-as
-CFLAGS   = -std=gnu99 -ffreestanding -O2 -Wall -Wextra
-LDFLAGS  = -T linker.ld -nostdlib
+ASM       = $(TARGET)-as
+CCFLAGS=-m32 -std=c11 -O2 -g -Wall -Wextra -Wpedantic -Wstrict-aliasing
+CCFLAGS+=-Wno-pointer-arith -Wno-unused-parameter
+CCFLAGS+=-nostdlib -nostdinc -ffreestanding -fno-pie -fno-stack-protector
+CCFLAGS+=-fno-builtin-function -fno-builtin
 
-OUTPUT_DIR = build
-LIMINE_DIR = $(OUTPUT_DIR)/limine
+BOOTSECT_SRC=\
+	src/boot/bootloader.s
 
-.PHONY: all clean run dirs install-deps
+BOOTSECT_OBJS=$(BOOTSECT_SRC:.s=.o)
 
-all: dirs $(OUTPUT_DIR)/glacieros.iso
+C_SRCS = $(wildcard src/kernel/*.c src/kernel/drivers/*.c src/kernel/cpu/*.c)
+HEADER_SRCS = $(wildcard src/kernel/*.h  src/kernel/drivers/*.h src/kernel/cpu/*.h)
+S_SRCS=$(filter-out $(BOOTSECT_SRC), $(wildcard src/boot/*.s src/kernel/cpu/*.s))
+OBJ_SRCS= $(C_SRCS:.c=.o) $(S_SRCS:.s=.o)
+
+BOOTSECT=bootsect.bin
+KERNEL=kernel.bin
+
+all: dirs ${C_SRCS} ${HEADER_SRCS} kernel bootsect
 
 dirs:
-	mkdir -p $(OUTPUT_DIR)
+	mkdir -p bin
 
-$(OUTPUT_DIR)/boot.o: boot.s | dirs
-	$(AS) boot.s -o $@
+bootsect: $(BOOTSECT_OBJS)
+	$(LD) -o ./bin/$(BOOTSECT) $^ -Ttext 0x7C00 --oformat=binary
 
-$(OUTPUT_DIR)/kernel.o: kernel.c | dirs
-	$(CC) -c kernel.c -o $@ $(CFLAGS)
+kernel: ${OBJ_SRCS}
+	$(LD) -o ./bin/$(KERNEL) $^ $(LDFLAGS) -Tsrc/linker.ld
 
-$(OUTPUT_DIR)/kernel.bin: $(OUTPUT_DIR)/boot.o $(OUTPUT_DIR)/kernel.o
-	$(CC) $(LDFLAGS) -o $(OUTPUT_DIR)/kernel.bin -ffreestanding -O2 -nostdlib $^ -lgcc
+echo: glacier-os.bin
+	xxd $<
 
-$(OUTPUT_DIR)/glacieros.iso: $(OUTPUT_DIR)/kernel.bin
-	mkdir -p $(OUTPUT_DIR)/boot/
+%.o: %.c ${HEADERS}
+	$(CC) -g -m32 -ffreestanding -fno-pie -fno-stack-protector -c $< -o $@
 
-	cp $(OUTPUT_DIR)/kernel.bin $(OUTPUT_DIR)/boot/kernel.bin
-	cp boot/limine.conf $(OUTPUT_DIR)/boot/limine.conf
-	cp $(LIMINE_DIR)/limine-bios.sys $(OUTPUT_DIR)/
-	cp $(LIMINE_DIR)/limine-bios-cd.bin $(OUTPUT_DIR)/
-	cp $(LIMINE_DIR)/limine-uefi-cd.bin $(OUTPUT_DIR)/
+%.o: %.s
+	$(ASM) -o $@ $<
 
-	xorriso -as mkisofs -R -r -J \
-		-b limine-bios-cd.bin \
-		-no-emul-boot -boot-load-size 4 -boot-info-table -hfsplus \
-		-apm-block-size 2048 \
-		--efi-boot limine-uefi-cd.bin \
-		-efi-boot-part --efi-boot-image --protective-msdos-label \
-		-o $@ \
-		$(OUTPUT_DIR)
+%.dis: %.bin
+	ndisasm -b 32 $< > $@
 
-	$(LIMINE_DIR)/limine bios-install $@
+iso: bootsect kernel
+	dd if=/dev/zero of=glacier-os.iso bs=512 count=2880
+	dd if=./bin/$(BOOTSECT) of=glacier-os.iso conv=notrunc bs=512 seek=0 count=1
+	dd if=./bin/$(KERNEL) of=glacier-os.iso conv=notrunc bs=512 seek=1 count=2048
 
-run: $(OUTPUT_DIR)/glacieros.iso
-	qemu-system-i386 -cdrom $<
+run: glacier-os.iso
+	qemu-system-i386 -drive format=raw,file=$< -d cpu_reset -monitor stdio
 
 clean:
-	rm -rf $(OUTPUT_DIR)
-
-install-deps:
-	@echo "[*] Installing dependencies..."
-
-	@if command -v port >/dev/null 2>&1; then \
-	    echo "[*] Using MacPorts..."; \
-		sudo port install coreutils gmake grep gsed findutils gawk gzip nasm mtools qemu xorriso; \
-	elif command -v brew >/dev/null 2>&1; then \
-		echo "[*] Using Homebrew..."; \
-		brew install coreutils make grep gnu-sed findutils gawk gzip nasm mtools qemu xorriso; \
-	else \
-		echo "[!] No supported package manager found (Homebrew or MacPorts). Please install manually."; \
-		exit 1; \
-	fi
-
-	@if [ ! -d "$(LIMINE_DIR)" ]; then \
-		echo "[*] Cloning Limine binary release to $(LIMINE_DIR)..."; \
-		git clone --branch=v9.x-binary --depth=1 https://github.com/limine-bootloader/limine.git $(LIMINE_DIR); \
-		echo "[*] Building Limine..."; \
-		$(MAKE) -C $(LIMINE_DIR); \
-	else \
-		echo "[*] Limine binary release already exists in $(LIMINE_DIR), skipping clone."; \
-	fi
+	$(RM) *.bin *.o *.dis *.elf
+	$(RM) src/kernel/*.o
+	$(RM) src/boot/*.o src/boot/*.bin
+	$(RM) src/kernel/drivers/*.o
+	$(RM) src/kernel/cpu/*.o

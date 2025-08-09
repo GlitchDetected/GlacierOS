@@ -1,5 +1,17 @@
 # Binaries
-build
+build/
+*.iso
 
-.dea/
+*.icloud
+.DS_Store
+.vscode
+.idea/
 Session.vim
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
