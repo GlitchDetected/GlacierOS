@@ -21,6 +21,8 @@ static const char *LOGO[LOGO_HEIGHT] = {
     "==============================",
 };
 
+bool screen_dirty = false;
+
 void print_logo(void) {
     for (int i = 0; i < LOGO_HEIGHT; i++) {
         print_string(LOGO[i]);
@@ -150,6 +152,7 @@ void start_kernel() {
     print_string("> ");
     screen_swap();
     while (1) {
+        bool input_processed = false;
         for (int sc = 0; sc < 128; sc++) {
             if (keyboard_char(sc)) {
                 char c = (char)sc;
@@ -159,11 +162,13 @@ void start_kernel() {
                     print_string("\n");
                     execute_command(input_buffer);
                     input_len = 0;
+                    screen_dirty = true;
                 }
                 else if (c == '\b') {
                     if (input_len > 0) {
                         input_len--;
                         print_string("\b \b");
+                        screen_dirty = true;
                     }
                 }
                 else {
@@ -171,11 +176,21 @@ void start_kernel() {
                         input_buffer[input_len++] = c;
                         char str[2] = {c, '\0'};
                         print_string(str);
+                        screen_dirty = true;
                     }
                 }
                 keyboard.chars[(uint8_t)c] = false;
+                input_processed = true;
             }
         }
+
+        if (screen_dirty) {
             screen_swap();
+            screen_dirty = false;
+        }
+
+        if (!input_processed) {
+            asm volatile("hlt");
+        }
     }
 }
