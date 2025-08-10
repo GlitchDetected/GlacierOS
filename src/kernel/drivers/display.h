@@ -1,6 +1,6 @@
 #pragma once
-#ifndef SCREEN_H
-#define SCREEN_H
+#ifndef DISPLAY_H
+#define DISPLAY_H
 #include "../font/font.h"
 
 #include "../utils.h"

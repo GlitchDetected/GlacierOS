@@ -10,13 +10,15 @@
 #include "utils.h"
 #include "memory.h"
 #include "kernel.h"
+#include "./drivers/mouse.h"
 
+#define LOGO_HEIGHT 5
 static const char *LOGO[LOGO_HEIGHT] = {
-    "  ____ _               _     ___   ____  ____   ",
-    " / ___| | __ _ ___ ___| |__ | __| |___ \\|___ \\  ",
-    "| |  _| |/ _` / __/ __| '_ \\| _|    __) | __) | ",
-    "| |_| | | (_| \\__ \\__ \\ | | | |___ / __/ / __/  ",
-    " \\____|_|\\__,_|___/___/_| |_|_____|_____|_____| ",
+    " GGG  L     AAAAA  CCCC  III  EEEEE  RRRR    OOO   SSS  ",
+    "G      L     A   A  C     I    E      R   R  O   O  S    ",
+    "G  GG  L     AAAAA  C     I    EEEE   RRRR   O   O   SSS ",
+    "G   G  L     A   A  C     I    E      R  R   O   O      S",
+    " GGG   LLLLL A   A  CCCC III  EEEEE  R   R   OOO   SSS  ",
 };
 
 void print_logo(void) {
@@ -24,18 +26,13 @@ void print_logo(void) {
         print_string(LOGO[i]);
         print_nl();
     }
-    screen_swap();
 }
 
 void* alloc(int n) {
     int *ptr = (int *) mem_alloc(n * sizeof(int));
     if (ptr == NULL_POINTER) {
         print_string("Memory not allocated.\n");
-    } else {
-        for (int i = 0; i < n; ++i) {
-        }
-        for (int i = 0; i < n; ++i) {
-        }
+        screen_swap();
     }
     return ptr;
 }
@@ -56,7 +53,7 @@ void execute_command(char *input) {
         print_string("> ");
         screen_swap();
     }
-        else if (compare_string(input, "meminfo") == 0) {
+    else if (compare_string(input, "meminfo") == 0) {
         print_string("init_dynamic_mem()\n");
         print_dynamic_node_size();
         print_dynamic_mem();
@@ -90,12 +87,11 @@ void execute_command(char *input) {
             print_string("mem_free(ptr1)\n");
             print_dynamic_mem();
             print_nl();
-            screen_swap();
             ptr1 = NULL;
         } else {
             print_string("ptr1 is already free or not allocated.\n> ");
-            screen_swap();
         }
+        screen_swap();
     }
     else if (compare_string(input, "free2") == 0) {
         if (ptr2 != NULL) {
@@ -103,12 +99,11 @@ void execute_command(char *input) {
             print_string("mem_free(ptr2)\n");
             print_dynamic_mem();
             print_nl();
-            screen_swap();
             ptr2 = NULL;
         } else {
             print_string("ptr2 is already free or not allocated.\n> ");
-            screen_swap();
         }
+        screen_swap();
     }
     else if (compare_string(input, "free3") == 0) {
         if (ptr3 != NULL) {
@@ -116,12 +111,11 @@ void execute_command(char *input) {
             print_string("mem_free(ptr3)\n");
             print_dynamic_mem();
             print_nl();
-            screen_swap();
             ptr3 = NULL;
         } else {
             print_string("ptr3 is already free or not allocated.\n> ");
-            screen_swap();
         }
+        screen_swap();
     }
     else if (compare_string(input, "") == 0) {
         print_string("\n> ");
@@ -143,12 +137,15 @@ void start_kernel() {
     screen_init();
     timer_init();
     keyboard_init();
+    mouse_init();
     asm volatile("sti");
     init_dynamic_mem();
 
     clear_screen(COLOR(0, 0, 0));
     print_logo();
     screen_swap();
+
+    mouse();
 
     print_string("> ");
     screen_swap();
@@ -160,10 +157,7 @@ void start_kernel() {
                 if (c == '\n' || c == '\r') {
                     input_buffer[input_len] = '\0';
                     print_string("\n");
-                    screen_swap();
-
                     execute_command(input_buffer);
-
                     input_len = 0;
                 }
                 else if (c == '\b') {
@@ -179,9 +173,9 @@ void start_kernel() {
                         print_string(str);
                     }
                 }
-
                 keyboard.chars[(uint8_t)c] = false;
             }
         }
+            screen_swap();
     }
 }
