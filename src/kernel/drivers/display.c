@@ -1,23 +1,32 @@
 #include "display.h"
 #include "ports.h"
+#include "../font/font.h"
 #include <stdint.h>
 #include "../memory.h"
 #include "../utils.h"
 
+static size_t cursor_x = 0;
+static size_t cursor_y = 0;
+static u8 *BUFFER = (u8 *) 0xA0000;
+
+u8 _sbuffers[2][SCREEN_SIZE];
+u8 _sback = 0;
+
+#define CURRENT (_sbuffers[_sback])
+#define SWAP() (_sback = 1 - _sback)
+
+#define PALETTE_MASK 0x3C6
+#define PALETTE_READ 0x3C7
+#define PALETTE_WRITE 0x3C8
+#define PALETTE_DATA 0x3C9
+
 void set_cursor(int offset) {
-    offset /= 2;
-    port_byte_out(REG_SCREEN_CTRL, 14);
-    port_byte_out(REG_SCREEN_DATA, (unsigned char) (offset >> 8));
-    port_byte_out(REG_SCREEN_CTRL, 15);
-    port_byte_out(REG_SCREEN_DATA, (unsigned char) (offset & 0xff));
+    cursor_x = offset % SCREEN_WIDTH;
+    cursor_y = offset / SCREEN_WIDTH;
 }
 
 int get_cursor() {
-    port_byte_out(REG_SCREEN_CTRL, 14);
-    int offset = port_byte_in(REG_SCREEN_DATA) << 8; /* High byte: << 8 */
-    port_byte_out(REG_SCREEN_CTRL, 15);
-    offset += port_byte_in(REG_SCREEN_DATA);
-    return offset * 2;
+    return cursor_y * SCREEN_WIDTH + cursor_x;
 }
 
 int get_offset(int col, int row) {
@@ -52,46 +61,76 @@ int scroll_ln(int offset) {
     return offset - 2 * MAX_COLS;
 }
 
-/*
- * TODO:
- * - handle illegal offset (print error message somewhere)
- */
 void print_string(char *string) {
-    int offset = get_cursor();
     int i = 0;
+    size_t cursor_x = 0;
+    size_t cursor_y = 0;
+    u8 color = WHITE_ON_BLACK;
+
     while (string[i] != 0) {
-        if (offset >= MAX_ROWS * MAX_COLS * 2) {
-            offset = scroll_ln(offset);
-        }
         if (string[i] == '\n') {
-            offset = move_offset_to_new_line(offset);
+            cursor_x = 0;
+            cursor_y += CHAR_H;
+            if (cursor_y >= SCREEN_HEIGHT) {
+                cursor_y -= CHAR_H;
+            }
         } else {
-            set_char_at_video_memory(string[i], offset);
-            offset += 2;
+            font_char(string[i], cursor_x, cursor_y, color);
+            cursor_x += CHAR_W;
+            if (cursor_x >= SCREEN_WIDTH) {
+                cursor_x = 0;
+                cursor_y += CHAR_H;
+                if (cursor_y >= SCREEN_HEIGHT) {
+                    cursor_y -= CHAR_H;
+                }
+            }
         }
         i++;
     }
-    set_cursor(offset);
 }
+
 
 void print_nl() {
-    int newOffset = move_offset_to_new_line(get_cursor());
-    if (newOffset >= MAX_ROWS * MAX_COLS * 2) {
-        newOffset = scroll_ln(newOffset);
+    cursor_x = 0;
+    cursor_y += CHAR_H;
+    if (cursor_y >= SCREEN_HEIGHT) {
+        cursor_y -= CHAR_H;
     }
-    set_cursor(newOffset);
 }
 
-void clear_screen() {
-    int screen_size = MAX_COLS * MAX_ROWS;
-    for (int i = 0; i < screen_size; ++i) {
-        set_char_at_video_memory(' ', i * 2);
-    }
-    set_cursor(get_offset(0, 0));
+
+
+void clear_screen(u8 color) {
+    memset(&CURRENT, color, SCREEN_SIZE);
 }
 
 void print_backspace() {
-    int newCursor = get_cursor() - 2;
-    set_char_at_video_memory(' ', newCursor);
-    set_cursor(newCursor);
+    if (cursor_x >= CHAR_W) {
+        cursor_x -= CHAR_W;
+    } else if (cursor_y >= CHAR_H) {
+        cursor_y -= CHAR_H;
+        cursor_x = SCREEN_WIDTH - CHAR_W;
+    }
+    font_char(' ', cursor_x, cursor_y, 0);
+}
+
+void screen_swap() {
+    memcpy(BUFFER, &CURRENT, SCREEN_SIZE);
+    SWAP();
+}
+
+void screen_init() {
+    // configure palette with 8-bit RRRGGGBB color
+    outportb(PALETTE_MASK, 0xFF);
+    outportb(PALETTE_WRITE, 0);
+    for (u8 i = 0; i < 255; i++) {
+        outportb(PALETTE_DATA, (((i >> 5) & 0x7) * (256 / 8)) / 4);
+        outportb(PALETTE_DATA, (((i >> 2) & 0x7) * (256 / 8)) / 4);
+        outportb(PALETTE_DATA, (((i >> 0) & 0x3) * (256 / 4)) / 4);
+    }
+
+    // set color 255 = white
+    outportb(PALETTE_DATA, 0x3F);
+    outportb(PALETTE_DATA, 0x3F);
+    outportb(PALETTE_DATA, 0x3F);
 }

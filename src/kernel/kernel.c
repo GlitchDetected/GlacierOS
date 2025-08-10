@@ -3,6 +3,7 @@
 #include "./cpu/timer.h"
 #include "./drivers/display.h"
 #include "./drivers/keyboard.h"
+#include "font/font.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -15,7 +16,6 @@ void* alloc(int n) {
     if (ptr == NULL_POINTER) {
         print_string("Memory not allocated.\n");
     } else {
-        // Get the elements of the array
         for (int i = 0; i < n; ++i) {
 //            ptr[i] = i + 1; // shorthand for *(ptr + i)
         }
@@ -31,58 +31,72 @@ void* alloc(int n) {
 }
 
 void start_kernel() {
-    clear_screen();
+    clear_screen(COLOR(0, 0, 0));
+    screen_swap();
 
     print_string("Installing interrupt service routines (ISRs).\n");
     isr_install();
+    screen_swap();
 
     print_string("Enabling external interrupts.\n");
     asm volatile("sti");
+    screen_swap();
 
     print_string("Initializing keyboard (IRQ 1).\n");
     init_keyboard();
+    screen_swap();
 
     print_string("Initializing dynamic memory.\n");
     init_dynamic_mem();
+    screen_swap();
 
-    clear_screen();
+    clear_screen(COLOR(0, 0, 0));
+    screen_swap();
 
     print_string("init_dynamic_mem()\n");
     print_dynamic_node_size();
     print_dynamic_mem();
     print_nl();
+    screen_swap();
 
     int *ptr1 = alloc(5);
     print_string("int *ptr1 = alloc(5)\n");
     print_dynamic_mem();
     print_nl();
+    screen_swap();
 
     int *ptr2 = alloc(10);
     print_string("int *ptr2 = alloc(10)\n");
     print_dynamic_mem();
     print_nl();
+    screen_swap();
 
     mem_free(ptr1);
     print_string("mem_free(ptr1)\n");
     print_dynamic_mem();
     print_nl();
+    screen_swap();
 
     int *ptr3 = alloc(2);
     print_string("int *ptr3 = alloc(2)\n");
     print_dynamic_mem();
     print_nl();
+    screen_swap();
 
     mem_free(ptr2);
     print_string("mem_free(ptr2)\n");
     print_dynamic_mem();
     print_nl();
+    screen_swap();
 
     mem_free(ptr3);
     print_string("mem_free(ptr3)\n");
     print_dynamic_mem();
     print_nl();
+    screen_swap();
 
     print_string("> ");
+    screen_swap();
 }
 
 void execute_command(char *input) {

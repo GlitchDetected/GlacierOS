@@ -16,15 +16,15 @@ BOOTSECT_SRC=\
 
 BOOTSECT_OBJS=$(BOOTSECT_SRC:.s=.o)
 
-C_SRCS = $(wildcard src/kernel/*.c src/kernel/drivers/*.c src/kernel/cpu/*.c)
-HEADER_SRCS = $(wildcard src/kernel/*.h  src/kernel/drivers/*.h src/kernel/cpu/*.h)
+C_SRCS = $(wildcard src/kernel/*.c src/kernel/drivers/*.c src/kernel/cpu/*.c src/kernel/font/*.c)
+HEADER_SRCS = $(wildcard src/kernel/*.h  src/kernel/drivers/*.h src/kernel/cpu/*.h src/kernel/font/*.h)
 S_SRCS=$(filter-out $(BOOTSECT_SRC), $(wildcard src/boot/*.s src/kernel/cpu/*.s))
 OBJ_SRCS= $(C_SRCS:.c=.o) $(S_SRCS:.s=.o)
 
 BOOTSECT=bootsect.bin
 KERNEL=kernel.bin
 
-all: dirs ${C_SRCS} ${HEADER_SRCS} bootsect kernel
+all: dirs ${C_SRCS} ${HEADER_SRCS} bootsect kernel iso
 
 dirs:
 	mkdir -p bin

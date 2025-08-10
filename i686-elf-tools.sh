@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # sudo port selfupdate
-# chmod +x build.sh
-# ./build.sh
+# chmod +x i686-elf-tools.sh
+# ./i686-elf-tools.sh
 set -e
 
 PREFIX="$HOME/compiled"
