@@ -14,11 +14,11 @@
 
 #define LOGO_HEIGHT 5
 static const char *LOGO[LOGO_HEIGHT] = {
-    " GGG  L     AAAAA  CCCC  III  EEEEE  RRRR    OOO   SSS  ",
-    "G      L     A   A  C     I    E      R   R  O   O  S    ",
-    "G  GG  L     AAAAA  C     I    EEEE   RRRR   O   O   SSS ",
-    "G   G  L     A   A  C     I    E      R  R   O   O      S",
-    " GGG   LLLLL A   A  CCCC III  EEEEE  R   R   OOO   SSS  ",
+    "==============================",
+    "= GlacierOS                  =",
+    "= Made by GlitchDetected     =",
+    "=                            =",
+    "==============================",
 };
 
 void print_logo(void) {

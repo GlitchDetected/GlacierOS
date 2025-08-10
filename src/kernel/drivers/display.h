@@ -22,9 +22,11 @@ void print_string(const char *string);
 
 void print_nl();
 
-int scroll_ln(int offset);
+int scroll_ln(void);
 
 void print_backspace();
+
+void set_cursor(int x, int y);
 
 #define SCREEN_WIDTH 320
 #define SCREEN_HEIGHT 200

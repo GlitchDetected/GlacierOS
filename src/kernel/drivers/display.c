@@ -18,9 +18,9 @@ u8 _sback = 0;
 #define PALETTE_WRITE 0x3C8
 #define PALETTE_DATA 0x3C9
 
-void set_cursor(int offset) {
-    cursor_x = offset % SCREEN_WIDTH;
-    cursor_y = offset / SCREEN_WIDTH;
+void set_cursor(int x, int y) {
+    cursor_x = x * CHAR_W; // convert column to pixel position horizontally
+    cursor_y = y * CHAR_H; // convert row to pixel position vertically
 }
 
 int get_cursor() {
@@ -40,45 +40,49 @@ int move_offset_to_new_line(int offset) {
 }
 
 void set_char_at_video_memory(char character, int offset) {
-    uint8_t *vidmem = (uint8_t *) VIDEO_ADDRESS;
+    u8 *vidmem = (u8 *) VIDEO_ADDRESS;
     vidmem[offset] = character;
     vidmem[offset + 1] = WHITE_ON_BLACK;
 }
 
-int scroll_ln(int offset) {
+int scroll_ln(void) {
+    // Copy all rows up by 1 row
     memory_copy(
-            (uint8_t * )(get_offset(0, 1) + VIDEO_ADDRESS),
-            (uint8_t * )(get_offset(0, 0) + VIDEO_ADDRESS),
-            MAX_COLS * (MAX_ROWS - 1) * 2
+        (u8 *)(get_offset(0, 1) + VIDEO_ADDRESS),
+        (u8 *)(get_offset(0, 0) + VIDEO_ADDRESS),
+        MAX_COLS * (MAX_ROWS - 1) * 2
     );
 
+    // Clear the last row
     for (int col = 0; col < MAX_COLS; col++) {
         set_char_at_video_memory(' ', get_offset(col, MAX_ROWS - 1));
     }
 
-    return offset - 2 * MAX_COLS;
+    return 0;
 }
 
 void print_string(const char *string) {
     int i = 0;
-    u8 color = WHITE_ON_BLACK;
 
     while (string[i] != 0) {
         if (string[i] == '\n') {
             cursor_x = 0;
             cursor_y += CHAR_H;
-            if (cursor_y >= SCREEN_HEIGHT) {
-                scroll_ln(CHAR_H);
-                cursor_y = SCREEN_HEIGHT - CHAR_H;
+            int row = cursor_y / CHAR_H;
+            if (row >= MAX_ROWS) {
+                scroll_ln();
+                cursor_y = (MAX_ROWS - 1) * CHAR_H;
             }
         } else {
+            u8 color = WHITE_ON_BLACK;
+
             font_char(string[i], cursor_x, cursor_y, color);
             cursor_x += CHAR_W;
             if (cursor_x >= SCREEN_WIDTH) {
                 cursor_x = 0;
                 cursor_y += CHAR_H;
                 if (cursor_y >= SCREEN_HEIGHT) {
-                    scroll_ln(CHAR_H);
+                    scroll_ln();
                     cursor_y = SCREEN_HEIGHT - CHAR_H;
                 }
             }
@@ -90,8 +94,10 @@ void print_string(const char *string) {
 void print_nl() {
     cursor_x = 0;
     cursor_y += CHAR_H;
-    if (cursor_y >= SCREEN_HEIGHT) {
-        cursor_y -= CHAR_H;
+    int row = cursor_y / CHAR_H;
+    if (row >= MAX_ROWS) {
+        scroll_ln();
+        cursor_y = (MAX_ROWS - 1) * CHAR_H;
     }
 }
 

@@ -25,7 +25,7 @@ OBJ_SRCS= $(C_SRCS:.c=.o) $(S_SRCS:.s=.o)
 BOOTSECT=bootsect.bin
 KERNEL=kernel.bin
 
-all: dirs ${C_SRCS} ${HEADER_SRCS} bootsect kernel iso
+all: dirs ${C_SRCS} ${HEADER_SRCS} bootsect kernel iso run
 
 dirs:
 	mkdir -p bin
@@ -58,6 +58,7 @@ run: glacier-os.iso
 
 clean:
 	$(RM) *.bin *.o *.dis *.elf
+	$(RM) bin/*.bin
 	$(RM) src/kernel/*.o
 	$(RM) src/boot/*.o src/boot/*.bin
 	$(RM) src/kernel/drivers/*.o
