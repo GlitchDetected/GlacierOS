@@ -1,20 +1,39 @@
 #include "idt.h"
-#include "../utils.h"
 
-idt_gate_t idt[IDT_ENTRIES];
-idt_register_t idt_reg;
+struct IDTEntry {
+    u16 offset_low;
+    u16 selector;
+    u8 __ignored;
+    u8 type;
+    u16 offset_high;
+} PACKED;
 
-void set_idt_gate(int n, uint32_t handler) {
-    idt[n].low_offset = low_16(handler);
-    idt[n].sel = KERNEL_CS;
-    idt[n].always0 = 0;
-    idt[n].flags = 0x8E;
-    idt[n].high_offset = high_16(handler);
+struct IDTPointer {
+    u16 limit;
+    uintptr_t base;
+} PACKED;
+
+static struct {
+    struct IDTEntry entries[256];
+    struct IDTPointer pointer;
+} idt;
+
+// in start.S
+extern void idt_load();
+
+void idt_set(u8 index, void (*base)(struct Registers*), u16 selector, u8 flags) {
+    idt.entries[index] = (struct IDTEntry) {
+        .offset_low = ((uintptr_t) base) & 0xFFFF,
+        .offset_high = (((uintptr_t) base) >> 16) & 0xFFFF,
+        .selector = selector,
+        .type = flags | 0x60,
+        .__ignored = 0
+    };
 }
 
-void load_idt() {
-    idt_reg.base = (uint32_t) &idt;
-    idt_reg.limit = IDT_ENTRIES * sizeof(idt_gate_t) - 1;
-    /* load &idt_reg */
-    asm volatile("lidt (%0)" : : "r" (&idt_reg));
+void idt_init() {
+    idt.pointer.limit = sizeof(idt.entries) - 1;
+    idt.pointer.base = (uintptr_t) &idt.entries[0];
+    memset(&idt.entries[0], 0, sizeof(idt.entries));
+    idt_load((uintptr_t) &idt.pointer);
 }

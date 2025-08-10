@@ -1,31 +1,48 @@
 #include "timer.h"
-#include "../drivers/display.h"
-#include "../drivers/ports.h"
-#include "../utils.h"
 #include "isr.h"
+#include "irq.h"
 
-uint32_t tick = 0;
+#define PIT_A 0x40
+#define PIT_B 0x41
+#define PIT_C 0x42
+#define PIT_CONTROL 0x43
 
-static void timer_callback(registers_t *regs) {
-    tick++;
-    print_string("Tick: ");
+#define PIT_MASK 0xFF
+#define PIT_SET 0x36
 
-    char tick_ascii[256];
-    int_to_string(tick, tick_ascii);
-    print_string(tick_ascii);
-    print_nl();
+#define PIT_HZ 1193181
+#define DIV_OF_FREQ(_f) (PIT_HZ / (_f))
+#define FREQ_OF_DIV(_d) (PIT_HZ / (_d))
+#define REAL_FREQ_OF_FREQ(_f) (FREQ_OF_DIV(DIV_OF_FREQ((_f))))
+
+static struct {
+    u64 frequency;
+    u64 divisor;
+    u64 ticks;
+} state;
+
+static void timer_set(int hz) {
+    outportb(PIT_CONTROL, PIT_SET);
+
+    u16 d = (u16) (1193131.666 / hz);
+    outportb(PIT_A, d & PIT_MASK);
+    outportb(PIT_A, (d >> 8) & PIT_MASK);
 }
 
-void init_timer(uint32_t freq) {
-    /* Install the function we just wrote */
-    register_interrupt_handler(IRQ0, timer_callback);
+u64 timer_get() {
+    return state.ticks;
+}
 
-    /* Get the PIT value: hardware clock at 1193180 Hz */
-    uint32_t divisor = 1193180 / freq;
-    uint8_t low  = (uint8_t)(divisor & 0xFF);
-    uint8_t high = (uint8_t)( (divisor >> 8) & 0xFF);
-    /* Send the command */
-    port_byte_out(0x43, 0x36); /* Command port */
-    port_byte_out(0x40, low);
-    port_byte_out(0x40, high);
+static void timer_handler(struct Registers *regs) {
+    state.ticks++;
+}
+
+void timer_init() {
+    const u64 freq = REAL_FREQ_OF_FREQ(TIMER_TPS);
+    state.frequency = freq;
+    state.divisor = DIV_OF_FREQ(freq);
+    state.ticks = 0;
+    //timer_set(state.divisor);
+    timer_set(TIMER_TPS);
+    irq_install(0, timer_handler);
 }

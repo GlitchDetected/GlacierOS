@@ -1,143 +1,172 @@
 #include "isr.h"
 #include "idt.h"
-#include "../drivers/display.h"
-#include "../drivers/ports.h"
-#include "../utils.h"
+#include "../system.h"
 
-isr_t interrupt_handlers[256];
+#define NUM_ISRS 48
 
-/* Can't do this with a loop because we need the address
- * of the function names */
-void isr_install() {
-    set_idt_gate(0, (uint32_t) isr0);
-    set_idt_gate(1, (uint32_t) isr1);
-    set_idt_gate(2, (uint32_t) isr2);
-    set_idt_gate(3, (uint32_t) isr3);
-    set_idt_gate(4, (uint32_t) isr4);
-    set_idt_gate(5, (uint32_t) isr5);
-    set_idt_gate(6, (uint32_t) isr6);
-    set_idt_gate(7, (uint32_t) isr7);
-    set_idt_gate(8, (uint32_t) isr8);
-    set_idt_gate(9, (uint32_t) isr9);
-    set_idt_gate(10, (uint32_t) isr10);
-    set_idt_gate(11, (uint32_t) isr11);
-    set_idt_gate(12, (uint32_t) isr12);
-    set_idt_gate(13, (uint32_t) isr13);
-    set_idt_gate(14, (uint32_t) isr14);
-    set_idt_gate(15, (uint32_t) isr15);
-    set_idt_gate(16, (uint32_t) isr16);
-    set_idt_gate(17, (uint32_t) isr17);
-    set_idt_gate(18, (uint32_t) isr18);
-    set_idt_gate(19, (uint32_t) isr19);
-    set_idt_gate(20, (uint32_t) isr20);
-    set_idt_gate(21, (uint32_t) isr21);
-    set_idt_gate(22, (uint32_t) isr22);
-    set_idt_gate(23, (uint32_t) isr23);
-    set_idt_gate(24, (uint32_t) isr24);
-    set_idt_gate(25, (uint32_t) isr25);
-    set_idt_gate(26, (uint32_t) isr26);
-    set_idt_gate(27, (uint32_t) isr27);
-    set_idt_gate(28, (uint32_t) isr28);
-    set_idt_gate(29, (uint32_t) isr29);
-    set_idt_gate(30, (uint32_t) isr30);
-    set_idt_gate(31, (uint32_t) isr31);
+extern void _isr0(struct Registers*);
+extern void _isr1(struct Registers*);
+extern void _isr2(struct Registers*);
+extern void _isr3(struct Registers*);
+extern void _isr4(struct Registers*);
+extern void _isr5(struct Registers*);
+extern void _isr6(struct Registers*);
+extern void _isr7(struct Registers*);
+extern void _isr8(struct Registers*);
+extern void _isr9(struct Registers*);
+extern void _isr10(struct Registers*);
+extern void _isr11(struct Registers*);
+extern void _isr12(struct Registers*);
+extern void _isr13(struct Registers*);
+extern void _isr14(struct Registers*);
+extern void _isr15(struct Registers*);
+extern void _isr16(struct Registers*);
+extern void _isr17(struct Registers*);
+extern void _isr18(struct Registers*);
+extern void _isr19(struct Registers*);
+extern void _isr20(struct Registers*);
+extern void _isr21(struct Registers*);
+extern void _isr22(struct Registers*);
+extern void _isr23(struct Registers*);
+extern void _isr24(struct Registers*);
+extern void _isr25(struct Registers*);
+extern void _isr26(struct Registers*);
+extern void _isr27(struct Registers*);
+extern void _isr28(struct Registers*);
+extern void _isr29(struct Registers*);
+extern void _isr30(struct Registers*);
+extern void _isr31(struct Registers*);
+extern void _isr32(struct Registers*);
+extern void _isr33(struct Registers*);
+extern void _isr34(struct Registers*);
+extern void _isr35(struct Registers*);
+extern void _isr36(struct Registers*);
+extern void _isr37(struct Registers*);
+extern void _isr38(struct Registers*);
+extern void _isr39(struct Registers*);
+extern void _isr40(struct Registers*);
+extern void _isr41(struct Registers*);
+extern void _isr42(struct Registers*);
+extern void _isr43(struct Registers*);
+extern void _isr44(struct Registers*);
+extern void _isr45(struct Registers*);
+extern void _isr46(struct Registers*);
+extern void _isr47(struct Registers*);
 
-    // Remap the PIC
-    port_byte_out(0x20, 0x11);
-    port_byte_out(0xA0, 0x11);
-    port_byte_out(0x21, 0x20);
-    port_byte_out(0xA1, 0x28);
-    port_byte_out(0x21, 0x04);
-    port_byte_out(0xA1, 0x02);
-    port_byte_out(0x21, 0x01);
-    port_byte_out(0xA1, 0x01);
-    port_byte_out(0x21, 0x0);
-    port_byte_out(0xA1, 0x0);
-
-    // Install the IRQs
-    set_idt_gate(32, (uint32_t)irq0);
-    set_idt_gate(33, (uint32_t)irq1);
-    set_idt_gate(34, (uint32_t)irq2);
-    set_idt_gate(35, (uint32_t)irq3);
-    set_idt_gate(36, (uint32_t)irq4);
-    set_idt_gate(37, (uint32_t)irq5);
-    set_idt_gate(38, (uint32_t)irq6);
-    set_idt_gate(39, (uint32_t)irq7);
-    set_idt_gate(40, (uint32_t)irq8);
-    set_idt_gate(41, (uint32_t)irq9);
-    set_idt_gate(42, (uint32_t)irq10);
-    set_idt_gate(43, (uint32_t)irq11);
-    set_idt_gate(44, (uint32_t)irq12);
-    set_idt_gate(45, (uint32_t)irq13);
-    set_idt_gate(46, (uint32_t)irq14);
-    set_idt_gate(47, (uint32_t)irq15);
-
-    load_idt(); // Load with ASM
-}
-
-/* To print the message which defines every exception */
-char *exception_messages[] = {
-        "Division By Zero",
-        "Debug",
-        "Non Maskable Interrupt",
-        "Breakpoint",
-        "Into Detected Overflow",
-        "Out of Bounds",
-        "Invalid Opcode",
-        "No Coprocessor",
-
-        "Double Fault",
-        "Coprocessor Segment Overrun",
-        "Bad TSS",
-        "Segment Not Present",
-        "Stack Fault",
-        "General Protection Fault",
-        "Page Fault",
-        "Unknown Interrupt",
-
-        "Coprocessor Fault",
-        "Alignment Check",
-        "Machine Check",
-        "Reserved",
-        "Reserved",
-        "Reserved",
-        "Reserved",
-        "Reserved",
-
-        "Reserved",
-        "Reserved",
-        "Reserved",
-        "Reserved",
-        "Reserved",
-        "Reserved",
-        "Reserved",
-        "Reserved"
+static void (*stubs[NUM_ISRS])(struct Registers*) = {
+    _isr0,
+    _isr1,
+    _isr2,
+    _isr3,
+    _isr4,
+    _isr5,
+    _isr6,
+    _isr7,
+    _isr8,
+    _isr9,
+    _isr10,
+    _isr11,
+    _isr12,
+    _isr13,
+    _isr14,
+    _isr15,
+    _isr16,
+    _isr17,
+    _isr18,
+    _isr19,
+    _isr20,
+    _isr21,
+    _isr22,
+    _isr23,
+    _isr24,
+    _isr25,
+    _isr26,
+    _isr27,
+    _isr28,
+    _isr29,
+    _isr30,
+    _isr31,
+    _isr32,
+    _isr33,
+    _isr34,
+    _isr35,
+    _isr36,
+    _isr37,
+    _isr38,
+    _isr39,
+    _isr40,
+    _isr41,
+    _isr42,
+    _isr43,
+    _isr44,
+    _isr45,
+    _isr46,
+    _isr47,
 };
 
-void isr_handler(registers_t *r) {
-    print_string("received interrupt: ");
-    char s[3];
-    int_to_string(r->int_no, s);
-    print_string(s);
-    print_nl();
-    print_string(exception_messages[r->int_no]);
-    print_nl();
+static const char *exceptions[32] = {
+    "Divide by zero",
+    "Debug",
+    "NMI",
+    "Breakpoint",
+    "Overflow",
+    "OOB",
+    "Invalid opcode",
+    "No coprocessor",
+    "Double fault",
+    "Coprocessor segment overrun",
+    "Bad TSS",
+    "Segment not present",
+    "Stack fault",
+    "General protection fault",
+    "Page fault",
+    "Unrecognized interrupt",
+    "Coprocessor fault",
+    "Alignment check",
+    "Machine check",
+    "RESERVED",
+    "RESERVED",
+    "RESERVED",
+    "RESERVED",
+    "RESERVED",
+    "RESERVED",
+    "RESERVED",
+    "RESERVED",
+    "RESERVED",
+    "RESERVED",
+    "RESERVED"
+};
+
+static struct {
+    size_t index;
+    void (*stub)(struct Registers*);
+} isrs[NUM_ISRS];
+
+static void (*handlers[NUM_ISRS])(struct Registers*) = { 0 };
+
+void isr_install(size_t i, void (*handler)(struct Registers*)) {
+    handlers[i] = handler;
 }
 
-void register_interrupt_handler(uint8_t n, isr_t handler) {
-    interrupt_handlers[n] = handler;
+// referenced from start.S
+void isr_handler(struct Registers *regs) {
+    if (handlers[regs->int_no]) {
+        handlers[regs->int_no](regs);
+    }
 }
 
-void irq_handler(registers_t *r) {
-    /* Handle the interrupt in a more modular way */
-    if (interrupt_handlers[r->int_no] != 0) {
-        isr_t handler = interrupt_handlers[r->int_no];
-        handler(r);
+static void exception_handler(struct Registers *regs) {
+    panic(exceptions[regs->int_no]);
+}
+
+void isr_init() {
+    for (size_t i = 0; i < NUM_ISRS; i++) {
+        isrs[i].index = i;
+        isrs[i].stub = stubs[i];
+        idt_set(isrs[i].index, isrs[i].stub, 0x08, 0x8E);
     }
 
-    // EOI
-    if (r->int_no >= 40) {
-        port_byte_out(0xA0, 0x20); /* follower */
+    for (size_t i = 0; i < 32; i++) {
+        isr_install(i, exception_handler);
     }
-    port_byte_out(0x20, 0x20); /* leader */
 }

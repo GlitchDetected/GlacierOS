@@ -1,5 +1,11 @@
-#pragma once
+#ifndef TIMER_H
+#define TIMER_H
 
 #include "../utils.h"
 
-void init_timer(uint32_t freq);
+#define TIMER_TPS 363
+
+u64 timer_get();
+void timer_init();
+
+#endif

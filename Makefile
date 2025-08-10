@@ -10,6 +10,7 @@ CCFLAGS=-m32 -std=c11 -O2 -g -Wall -Wextra -Wpedantic -Wstrict-aliasing
 CCFLAGS+=-Wno-pointer-arith -Wno-unused-parameter
 CCFLAGS+=-nostdlib -nostdinc -ffreestanding -fno-pie -fno-stack-protector
 CCFLAGS+=-fno-builtin-function -fno-builtin
+LIBGCC := $(shell $(CC) $(CCFLAGS) -print-libgcc-file-name)
 
 BOOTSECT_SRC=\
 	src/boot/bootloader.s
@@ -33,7 +34,7 @@ bootsect: $(BOOTSECT_OBJS)
 	$(LD) -o ./bin/$(BOOTSECT) $^ -Ttext 0x7C00 --oformat=binary
 
 kernel: ${OBJ_SRCS}
-	$(LD) -o ./bin/$(KERNEL) $^ $(LDFLAGS) -Tsrc/linker.ld
+	$(LD) -o ./bin/$(KERNEL) $^ $(LDFLAGS) $(LIBGCC) -Tsrc/linker.ld
 
 echo: glacier-os.bin
 	xxd $<
@@ -61,4 +62,5 @@ clean:
 	$(RM) src/boot/*.o src/boot/*.bin
 	$(RM) src/kernel/drivers/*.o
 	$(RM) src/kernel/cpu/*.o
+	$(RM) src/kernel/font/*.o
 	$(RM) *.iso

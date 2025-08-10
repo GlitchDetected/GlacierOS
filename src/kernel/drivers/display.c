@@ -1,7 +1,5 @@
 #include "display.h"
-#include "ports.h"
 #include "../font/font.h"
-#include <stdint.h>
 #include "../memory.h"
 #include "../utils.h"
 
@@ -61,10 +59,8 @@ int scroll_ln(int offset) {
     return offset - 2 * MAX_COLS;
 }
 
-void print_string(char *string) {
+void print_string(const char *string) {
     int i = 0;
-    size_t cursor_x = 0;
-    size_t cursor_y = 0;
     u8 color = WHITE_ON_BLACK;
 
     while (string[i] != 0) {
@@ -72,7 +68,8 @@ void print_string(char *string) {
             cursor_x = 0;
             cursor_y += CHAR_H;
             if (cursor_y >= SCREEN_HEIGHT) {
-                cursor_y -= CHAR_H;
+                scroll_ln(CHAR_H);
+                cursor_y = SCREEN_HEIGHT - CHAR_H;
             }
         } else {
             font_char(string[i], cursor_x, cursor_y, color);
@@ -81,14 +78,14 @@ void print_string(char *string) {
                 cursor_x = 0;
                 cursor_y += CHAR_H;
                 if (cursor_y >= SCREEN_HEIGHT) {
-                    cursor_y -= CHAR_H;
+                    scroll_ln(CHAR_H);
+                    cursor_y = SCREEN_HEIGHT - CHAR_H;
                 }
             }
         }
         i++;
     }
 }
-
 
 void print_nl() {
     cursor_x = 0;
@@ -97,8 +94,6 @@ void print_nl() {
         cursor_y -= CHAR_H;
     }
 }
-
-
 
 void clear_screen(u8 color) {
     memset(&CURRENT, color, SCREEN_SIZE);

@@ -18,7 +18,7 @@
 #define REG_SCREEN_DATA 0x3d5
 
 /* Public kernel API */
-void print_string(char *string);
+void print_string(const char *string);
 
 void print_nl();
 
@@ -26,8 +26,8 @@ int scroll_ln(int offset);
 
 void print_backspace();
 
-#define SCREEN_WIDTH 600
-#define SCREEN_HEIGHT 600
+#define SCREEN_WIDTH 320
+#define SCREEN_HEIGHT 200
 #define SCREEN_SIZE (SCREEN_WIDTH * SCREEN_HEIGHT)
 
 #define COLOR(_r, _g, _b)((u8)( \
