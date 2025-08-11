@@ -70,6 +70,8 @@ typedef double f64;
         (__v ^ ((-(_x) ^ __v) & (1 << (_n))));\
         })
 
+#define BIT_TEST(_v, _n) (((_v) >> (_n)) & 1)
+
 #define PACKED __attribute__((packed))
 
 #define CLI() asm ("cli")
