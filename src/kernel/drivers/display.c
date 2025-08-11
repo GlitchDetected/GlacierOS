@@ -102,7 +102,7 @@ void print_nl() {
 }
 
 void clear_screen(u8 color) {
-    memset(&CURRENT, color, SCREEN_SIZE);
+    memset(CURRENT, color, SCREEN_SIZE);
 }
 
 void print_backspace() {
@@ -116,7 +116,7 @@ void print_backspace() {
 }
 
 void screen_swap() {
-    memcpy(BUFFER, &CURRENT, SCREEN_SIZE);
+    memcpy(BUFFER, CURRENT, SCREEN_SIZE);
     SWAP();
 }
 
