@@ -1,6 +1,6 @@
-#include "../kernel/system.h"
-#include "./drivers/display.h"
-#include "./font/font.h"
+#include "../include/system.h"
+#include "../include/display.h"
+#include "../include/font.h"
 
 static u32 rseed = 1;
 

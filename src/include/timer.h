@@ -1,7 +1,7 @@
 #ifndef TIMER_H
 #define TIMER_H
 
-#include "../utils.h"
+#include "utils.h"
 
 #define TIMER_TPS 363
 

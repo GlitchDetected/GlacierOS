@@ -8,7 +8,7 @@ LD       = $(TARGET)-ld
 ASM       = $(TARGET)-as
 CCFLAGS=-m32 -std=c11 -O2 -g -Wall -Wextra -Wpedantic -Wstrict-aliasing
 CCFLAGS+=-Wno-pointer-arith -Wno-unused-parameter
-CCFLAGS+=-nostdlib -nostdinc -ffreestanding -fno-pie -fno-stack-protector
+CCFLAGS+=$(c_include) -nostdlib -nostdinc -ffreestanding -fno-pie -fno-stack-protector
 CCFLAGS+=-fno-builtin-function -fno-builtin
 LIBGCC := $(shell $(CC) $(CCFLAGS) -print-libgcc-file-name)
 
@@ -18,7 +18,8 @@ BOOTSECT_SRC=\
 BOOTSECT_OBJS=$(BOOTSECT_SRC:.s=.o)
 
 C_SRCS = $(wildcard src/kernel/*.c src/kernel/drivers/*.c src/kernel/cpu/*.c src/kernel/font/*.c)
-HEADER_SRCS = $(wildcard src/kernel/*.h  src/kernel/drivers/*.h src/kernel/cpu/*.h src/kernel/font/*.h)
+c_include := 'src/include'
+HEADER_SRCS = $(wildcard src/include*.h)
 S_SRCS=$(filter-out $(BOOTSECT_SRC), $(wildcard src/boot/*.s src/kernel/cpu/*.s))
 OBJ_SRCS= $(C_SRCS:.c=.o) $(S_SRCS:.s=.o)
 

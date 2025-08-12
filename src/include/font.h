@@ -1,8 +1,8 @@
 #ifndef FONT_H
 #define FONT_H
 
-#include "../utils.h"
-#include "../drivers/display.h"
+#include "utils.h"
+#include "display.h"
 
 #define font_width(_s) (strlen((_s)) * 8)
 #define font_height() (8)

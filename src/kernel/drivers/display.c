@@ -1,7 +1,7 @@
-#include "display.h"
-#include "../font/font.h"
-#include "../memory.h"
-#include "../utils.h"
+#include "../../include/display.h"
+#include "../../include/font.h"
+#include "../../include/memory.h"
+#include "../../include/utils.h"
 
 static size_t cursor_x = 0;
 static size_t cursor_y = 0;

@@ -1,7 +1,7 @@
 #ifndef KEYBOARD_H
 #define KEYBOARD_H
 
-#include "../utils.h"
+#include "utils.h"
 
 #define KEY_NULL 0
 #define KEY_ESC 27

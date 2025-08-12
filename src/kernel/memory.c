@@ -1,8 +1,8 @@
 #include <stdbool.h>
 #include <stdint.h>
-#include "memory.h"
-#include "./drivers/display.h"
-#include "utils.h"
+#include "../include/memory.h"
+#include "../include/display.h"
+#include "../include/utils.h"
 
 // http://www.sunshine2k.de/articles/coding/cmemalloc/cmemory.html#ch33
 

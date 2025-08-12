@@ -1,6 +1,6 @@
-#include "irq.h"
-#include "idt.h"
-#include "isr.h"
+#include "../../include/irq.h"
+#include "../../include/idt.h"
+#include "../../include/isr.h"
 
 // PIC constants
 #define PIC1 0x20

@@ -1,6 +1,6 @@
-#include "font.h"
-#include "../drivers/display.h"
-#include "../system.h"
+#include "../../include/font.h"
+#include "../../include/display.h"
+#include "../../include/system.h"
 #include "../font8x8/font8x8_basic.h"
 
 void font_char(char c, size_t x, size_t y, u8 color) {

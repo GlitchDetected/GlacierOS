@@ -1,7 +1,7 @@
 #ifndef ISR_H
 #define ISR_H
 
-#include "../utils.h"
+#include "utils.h"
 
 struct Registers {
     u32 __ignored, fs, es, ds;

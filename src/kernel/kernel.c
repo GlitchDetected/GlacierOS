@@ -1,16 +1,16 @@
-#include "./cpu/idt.h"
-#include "./cpu/isr.h"
-#include "./cpu/irq.h"
-#include "./cpu/timer.h"
-#include "./drivers/display.h"
-#include "./drivers/keyboard.h"
-#include "./cpu/fpu.h"
+#include "../include/idt.h"
+#include "../include/isr.h"
+#include "../include/irq.h"
+#include "../include/timer.h"
+#include "../include/display.h"
+#include "../include/keyboard.h"
+#include "../include/fpu.h"
 #include <stddef.h>
 #include <stdint.h>
-#include "utils.h"
-#include "memory.h"
-#include "kernel.h"
-#include "./drivers/mouse.h"
+#include "../include/utils.h"
+#include "../include/memory.h"
+#include "../include/kernel.h"
+#include "../include/mouse.h"
 
 #define LOGO_HEIGHT 5
 static const char *LOGO[LOGO_HEIGHT] = {

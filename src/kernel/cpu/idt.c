@@ -1,4 +1,4 @@
-#include "idt.h"
+#include "../../include/idt.h"
 
 struct IDTEntry {
     u16 offset_low;

@@ -1,7 +1,7 @@
-#include "mouse.h"
-#include "../cpu/irq.h"
-#include "../utils.h"
-#include "display.h"
+#include "../../include/mouse.h"
+#include "../../include/irq.h"
+#include "../../include/utils.h"
+#include "../../include/display.h"
 
 #define CURSOR_WIDTH 11
 #define CURSOR_HEIGHT 16

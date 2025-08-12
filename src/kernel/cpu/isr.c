@@ -1,6 +1,6 @@
-#include "isr.h"
-#include "idt.h"
-#include "../system.h"
+#include "../../include/isr.h"
+#include "../../include/idt.h"
+#include "../../include/system.h"
 
 #define NUM_ISRS 48
 
