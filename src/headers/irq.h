@@ -12,6 +12,6 @@ typedef struct Registers {
 } Registers;
 
 void irq_install(size_t i, void (*handler)(struct Registers*));
-void irq_init();
+void init_irq();
 
 #endif

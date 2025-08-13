@@ -2,8 +2,7 @@
 #define __STRING_H
 
 #include <stdint.h>
-#include <stddef.h>
-#include "types.h"
+#include <types.h>
 
 char* reverse(char *buffer, int i, int j);
 char* itoa(int value, char* buffer, int base);

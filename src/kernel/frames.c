@@ -1,11 +1,12 @@
-#include "../headers/frames.h"
-#include "../headers/paging.h"
-#include "../headers/kernel.h"
-#include "../headers/memory.h"
 #include <stdint.h>
-#include "../headers/strings.h"
-#include "../headers/x86.h"
-#include "../headers/isr.h"
+#include <types.h>
+#include <frames.h>
+#include <paging.h>
+#include <kernel.h>
+#include <memory.h>
+#include <strings.h>
+#include <x86.h>
+#include <isr.h>
 
 uint64_t mmu_nframes; // Number of entries in bitset
 uint32_t *mmu_frames; // Start address of bitset

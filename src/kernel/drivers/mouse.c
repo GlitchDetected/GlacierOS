@@ -142,7 +142,7 @@ read_next:
 }
 
 
-void mouse_init() {
+void init_mouse() {
   uint8_t status;
 
   // queue_init(&mouse_queue, 32);

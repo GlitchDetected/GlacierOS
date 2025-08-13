@@ -1,11 +1,19 @@
-#ifndef TIMER_H
-#define TIMER_H
+#ifndef __TIMER_H
+#define __TIMER_H
 
 #include <stdint.h>
 
-#define TIMER_TPS 363
+#define TIMER_HZ 50
 
-uint64_t timer_get();
-void timer_init();
+extern volatile uint64_t __tick;
+
+void init_timer();
+uint64_t timer_tick();
+void timer_callback();
+
+void timer_enable();
+void timer_disable();
+
+void krnl_delay(unsigned int d);
 
 #endif

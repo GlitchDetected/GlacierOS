@@ -22,7 +22,6 @@ FILE* fopen(char* filename, char* mode) {
         return NULL;
     }
 
-    // TODO: Can this be more cleaner??
     FILE *ret_file = malloc(sizeof(FILE));
     *ret_file = file;
     return ret_file;

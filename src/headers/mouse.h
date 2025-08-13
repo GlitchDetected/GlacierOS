@@ -31,6 +31,6 @@ extern int32_t mouse_x_difference;
 extern int32_t mouse_y_difference;
 extern int32_t mouse_buttons;
 
-void mouse_init();
+void init_mouse();
 
 #endif

@@ -1,8 +1,7 @@
 #pragma once
 
-#include "fat.h"
+#include <fat.h>
 #include <stdint.h>
-#include <stddef.h>
 
 typedef struct {
     uint8_t scratch_sector[SECTOR_SIZE];

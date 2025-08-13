@@ -6,10 +6,17 @@ TARGET   = x86_64-elf
 CC       = $(TARGET)-gcc
 LD       = $(TARGET)-ld
 ASM       = $(TARGET)-as
-CCFLAGS=-m64 -std=c11 -O2 -g -Wall -Wextra -Wpedantic -Wstrict-aliasing
-CCFLAGS+=-Wno-pointer-arith -Wno-unused-parameter
-CCFLAGS+=-nostdlib -nostdinc -ffreestanding -fno-pie -fno-stack-protector
-CCFLAGS+=-fno-builtin-function -fno-builtin
+C_INCLUDE := 'src/headers'
+CCFLAGS = -m64 -O2 -g \
+          -Wall -Wextra -Wpedantic -Wstrict-aliasing \
+          -Wno-pointer-arith -Wno-unused-parameter \
+          -nostdlib -nostdinc -ffreestanding -fno-pie -fno-stack-protector \
+          -fno-builtin-function -fno-builtin \
+          -fno-pic -mno-red-zone -mno-mmx -mno-sse -mno-sse2 \
+          -nostartfiles -nodefaultlibs -fno-exceptions \
+          -mcmodel=large \
+          -I$(C_INCLUDE) \
+          -Wno-implicit-fallthrough -Wno-parentheses
 LIBGCC := $(shell $(CC) $(CCFLAGS) -print-libgcc-file-name)
 
 BOOTSECT_SRC=\
@@ -17,7 +24,7 @@ BOOTSECT_SRC=\
 
 BOOTSECT_OBJS=$(BOOTSECT_SRC:.s=.o)
 
-C_SRCS = $(wildcard src/kernel/*.c src/kernel/drivers/*.c src/kernel/cpu/*.c src/kernel/font/*.c)
+C_SRCS = $(wildcard src/kernel/*.c src/kernel/drivers/*.c src/kernel/cpu/*.c src/kernel/font/*.c src/kernel/libraries/*.c src/kernel/system/*.c src/kernel/filesystem/*.c)
 S_SRCS=$(filter-out $(BOOTSECT_SRC), $(wildcard src/boot/*.s src/kernel/cpu/*.s))
 OBJ_SRCS= $(C_SRCS:.c=.o) $(S_SRCS:.s=.o)
 
@@ -42,7 +49,7 @@ echo: glacier-os.bin
 	xxd $<
 
 %.o: %.c
-	$(CC) -g -m64 -ffreestanding -fno-pie -fno-stack-protector -c $< -o $@
+	$(CC) $(CCFLAGS) -c $< -o $@
 
 %.o: %.s
 	$(ASM) -o $@ $<
@@ -66,4 +73,7 @@ clean:
 	$(RM) src/kernel/drivers/*.o
 	$(RM) src/kernel/cpu/*.o
 	$(RM) src/kernel/font/*.o
+	$(RM) src/kernel/libraries/*.o
+	$(RM) src/kernel/system/*.o
+	$(RM) src/kernel/filesystem/*.o
 	$(RM) *.iso

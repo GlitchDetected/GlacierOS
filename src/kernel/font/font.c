@@ -2,7 +2,6 @@
 #include "../../headers/display.h"
 #include "../../headers/system.h"
 #include "../../font8x8/font8x8_basic.h"
-#include <stddef.h>
 #include <stdint.h>
 
 void font_char(char c, size_t x, size_t y, uint8_t color) {

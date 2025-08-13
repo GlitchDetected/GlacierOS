@@ -42,7 +42,7 @@ static void keyboard_callback(isr_ctx_t *ctx __attribute__((unused))) {
   pic_acknowledge(PIC_IRQ1);
 }
 
-void init_kernel_keyboard() {
+void init_keyboard() {
   register_interrupt_handler(ISR_IRQ1, keyboard_callback);
 	irq_enable(PIC_IRQ1);
 }

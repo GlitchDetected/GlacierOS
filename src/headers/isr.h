@@ -41,7 +41,7 @@
 
 #define SYSCALL_NO 0x80
 
-// These functions are declared in interrupt.asm file
+// These functions are declared in interrupts.s file
 extern void isr_stub_0();
 extern void isr_stub_1();
 extern void isr_stub_2();

@@ -2,7 +2,6 @@
 #define __HEAP_H
 
 #include <stdint.h>
-#include <stddef.h>
 
 #define HEAP_WALKER(name) for(mblock_t *name = root_mblock; name != NULL; name = name->next)
 

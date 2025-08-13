@@ -422,7 +422,7 @@ bool window_pop_message(window_t* win, message_t* msg_out) {
 }
 
 
-void init_kernel_window_manager() {
+void init_window_manager() {
 	DEBUG("SIZEOF LIST :%i\n", sizeof(window_list));
 	memset(window_list, 0, MAX_WINDOW_COUNT * sizeof(window_t*));
 	memcpy(&buffer_video_info, &vesa_video_info, sizeof(video_info_t));

@@ -8,11 +8,11 @@
 	You cannot re-copyright or restrict use of the code as released by Lewin Edwards.
 */
 
-#include "../headers/dosfs.h"
-#include "../headers/strings.h"
-#include "../headers/stdlib.h"
+#include "../../headers/dosfs.h"
+#include "../../headers/strings.h"
+#include "../../headers/stdlib.h"
 #include <stdint.h>
-#include "../headers/kernel.h"
+#include "../../headers/kernel.h"
 
 /*
 	Get starting sector# of specified partition on drive #unit

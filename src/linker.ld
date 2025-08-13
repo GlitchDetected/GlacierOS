@@ -1,12 +1,11 @@
 OUTPUT_FORMAT("elf64-x86-64")
-OUTPUT_ARCH(i386:x86-64)
 
 /* Physical load address */
 KERNEL_LMA = 0x100000;
 /* Virtual address start */
 KERNEL_VMA = 0xFFFF800000000000;
 
-ENTRY(start)
+ENTRY(_start)
 
 SECTIONS
 {

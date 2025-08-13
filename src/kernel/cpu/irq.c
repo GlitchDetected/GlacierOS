@@ -75,7 +75,7 @@ void irq_install(size_t i, void (*handler)(struct Registers *)) {
     x86_sti();
 }
 
-void irq_init() {
+void init_irq() {
     irq_remap();
 
     for (size_t i = 0; i < 16; i++) {

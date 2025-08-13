@@ -5,7 +5,7 @@
 #define COM1_PORT 0x3F8
 #define COM2_PORT 0x2F8
 
-void init_kernel_serial() {
+void init_serial() {
     // Init COM1 and COM2
     outp(COM1_PORT + 1, 0x00);    // Disable all interrupts
     outp(COM1_PORT + 3, 0x80);    // Enable DLAB (set baud rate divisor)
