@@ -1,0 +1,74 @@
+#pragma once
+#ifndef DISPLAY_H
+#define DISPLAY_H
+
+#include "font.h"
+#include <stdint.h>
+#include <stddef.h>
+
+#define VIDEO_ADDRESS 0xb8000
+#define MAX_ROWS 25
+#define MAX_COLS 80
+#define WHITE_ON_BLACK 0x0f
+
+#define CHAR_W font_height()
+#define CHAR_H font_height()
+
+/* Screen I/O ports */
+#define REG_SCREEN_CTRL 0x3d4
+#define REG_SCREEN_DATA 0x3d5
+
+/* Public kernel API */
+void print_string(const char *string);
+void print_nl(void);
+int scroll_ln(void);
+void print_backspace(void);
+void set_cursor(int x, int y);
+
+#define SCREEN_WIDTH 320
+#define SCREEN_HEIGHT 200
+#define SCREEN_SIZE (SCREEN_WIDTH * SCREEN_HEIGHT)
+
+#define COLOR(_r, _g, _b) ((uint8_t)( \
+(((_r) & 0x7) << 5) | \
+(((_g) & 0x7) << 2) | \
+(((_b) & 0x3) << 0) ))
+
+#define COLOR_R(_index) (((_index) >> 5) & 0x7)
+#define COLOR_G(_index) (((_index) >> 2) & 0x7)
+#define COLOR_B(_index) (((_index) >> 0) & 0x3)
+
+#define COLOR_ADD(_index, _d) ({ \
+uint8_t _c = (_index); \
+int _delta = (_d); \
+COLOR( \
+CLAMP(COLOR_R(_c) + _delta, 0, 7), \
+CLAMP(COLOR_G(_c) + _delta, 0, 7), \
+CLAMP(COLOR_B(_c) + _delta, 0, 3) \
+); \
+})
+
+extern uint8_t _sbuffers[2][SCREEN_SIZE];
+extern uint8_t _sback;
+
+#define screen_buffer() (_sbuffers[_sback])
+#define screen_set(_p, _x, _y) \
+(_sbuffers[_sback][((_y) * SCREEN_WIDTH + (_x))] = (_p))
+#define screen_offset(_x, _y) (screen_buffer()[(_y) * SCREEN_WIDTH + (_x)])
+
+#define screen_fill(_c, _x, _y, _w, _h) do { \
+size_t __x = (_x); \
+size_t __y = (_y); \
+size_t __w = (_w); \
+size_t __ymax = __y + (_h); \
+uint8_t __c = (_c); \
+for (; __y < __ymax; __y++) { \
+memset(&screen_buffer()[__y * SCREEN_WIDTH + __x], __c, __w); \
+} \
+} while (0)
+
+void screen_swap(void);
+void clear_screen(uint8_t color);
+void screen_init(void);
+
+#endif

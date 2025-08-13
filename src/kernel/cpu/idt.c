@@ -1,39 +1,30 @@
-#include "../../include/idt.h"
+#include "../../headers/idt.h"
 
-struct IDTEntry {
-    u16 offset_low;
-    u16 selector;
-    u8 __ignored;
-    u8 type;
-    u16 offset_high;
-} PACKED;
+idt_gate_t idt[IDT_ENTRIES];
+idt_register_t idt_reg;
 
-struct IDTPointer {
-    u16 limit;
-    uintptr_t base;
-} PACKED;
+void set_idt_gate(uint16_t n, uint64_t handler) {
+    idt[n].selector = 0x08;
+    idt[n].ptr_low  = (uint16_t) handler;
+    idt[n].ptr_mid  = (uint16_t) (handler >> 16);
+    idt[n].ptr_high = (uint32_t) (handler >> 32);
 
-static struct {
-    struct IDTEntry entries[256];
-    struct IDTPointer pointer;
-} idt;
+    idt[n].opts.stack_OK  = 0;
+    idt[n].opts.present   = 1;
+    idt[n].opts.DPL       = 3;
+    idt[n].opts.gate_type = 0x01;
+    idt[n].opts.ONES      = 0x07;
+    idt[n].opts.ZERO      = 0;
+    idt[n].opts.ZEROS     = 0;
 
-// in start.S
-extern void idt_load();
-
-void idt_set(u8 index, void (*base)(struct Registers*), u16 selector, u8 flags) {
-    idt.entries[index] = (struct IDTEntry) {
-        .offset_low = ((uintptr_t) base) & 0xFFFF,
-        .offset_high = (((uintptr_t) base) >> 16) & 0xFFFF,
-        .selector = selector,
-        .type = flags | 0x60,
-        .__ignored = 0
-    };
+    idt[n]._1_reserved = 0;
+    idt[n]._2_reserved = 0;
+    idt[n]._type       = 0;
 }
 
-void idt_init() {
-    idt.pointer.limit = sizeof(idt.entries) - 1;
-    idt.pointer.base = (uintptr_t) &idt.entries[0];
-    memset(&idt.entries[0], 0, sizeof(idt.entries));
-    idt_load((uintptr_t) &idt.pointer);
+void set_idt() {
+    idt_reg.base = (uint64_t) &idt;
+    idt_reg.length = IDT_ENTRIES * sizeof(idt_gate_t) - 1;
+    __asm__("lidt %0" : : "m"(idt_reg));
 }
+

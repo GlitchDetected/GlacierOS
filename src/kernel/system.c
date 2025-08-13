@@ -1,22 +1,23 @@
-#include "../include/system.h"
-#include "../include/display.h"
-#include "../include/font.h"
+#include "../headers/system.h"
+#include "../headers/display.h"
+#include "../headers/font.h"
+#include "../headers/strings.h"
 
-static u32 rseed = 1;
+static uint32_t rseed = 1;
 
-void seed(u32 s) {
+void seed(uint32_t s) {
     rseed = s;
 }
 
-u32 rand() {
-    static u32 x = 123456789;
-    static u32 y = 362436069;
-    static u32 z = 521288629;
-    static u32 w = 88675123;
+uint32_t rand(void) {
+    static uint32_t x = 123456789;
+    static uint32_t y = 362436069;
+    static uint32_t z = 521288629;
+    static uint32_t w = 88675123;
 
     x *= 23786259 - rseed;
 
-    u32 t;
+    uint32_t t;
 
     t = x ^ (x << 11);
     x = y; y = z; z = w;

@@ -1,6 +1,7 @@
-#include "../../include/fpu.h"
+#include "../../headers/fpu.h"
+#include "../../headers/types.h"
 
-void fpu_init() {
+void init_fpu() {
     size_t t;
 
     asm("clts");

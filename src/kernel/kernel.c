@@ -1,130 +1,73 @@
-#include "../include/idt.h"
-#include "../include/isr.h"
-#include "../include/irq.h"
-#include "../include/timer.h"
-#include "../include/display.h"
-#include "../include/keyboard.h"
-#include "../include/fpu.h"
-#include <stddef.h>
+#include "../headers/isr.h"
+#include "../headers/irq.h"
+#include "../headers/timer.h"
+#include "../headers/keyboard.h"
+#include "../headers/memory.h"
+#include "../headers/fpu.h"
+#include "../headers/pic.h"
+#include "../headers/kernel.h"
+#include "../headers/mouse.h"
+#include "../headers/process.h"
+#include "../headers/windows.h"
+#include "../headers/paging.h"
+#include "../headers/vesa.h"
+#include "../headers/fat.h"
 #include <stdint.h>
-#include "../include/utils.h"
-#include "../include/memory.h"
-#include "../include/kernel.h"
-#include "../include/mouse.h"
+#include <stddef.h>
+#include "../headers/x86.h"
+#include "../headers/serial.h"
+#include "../headers/stdarg.h"
+#include "../headers/printf.h"
 
-#define LOGO_HEIGHT 5
-static const char *LOGO[LOGO_HEIGHT] = {
-    "==============================",
-    "= GlacierOS                  =",
-    "= Made by GlitchDetected     =",
-    "=                            =",
-    "==============================",
-};
+#define GDT_NULL        0x00
+#define GDT_KERNEL_CODE 0x08
+#define GDT_KERNEL_DATA 0x10
+#define GDT_USER_CODE   0x18
+#define GDT_USER_DATA   0x20
+#define GDT_TSS         0x28
 
-bool screen_dirty = false;
+int serial_printf_help(unsigned c, void *ptr __UNUSED__) {
+    serial_write_com(1, c);
+    return 0;
+}
 
-void print_logo(void) {
-    for (int i = 0; i < LOGO_HEIGHT; i++) {
-        print_string(LOGO[i]);
-        print_nl();
+void HALT_AND_CATCH_FIRE(const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    (void)_printf(fmt, args, serial_printf_help, NULL);
+    va_end(args);
+    x86_hlt();
+    while(1) {}
+}
+
+void _kernel_debug(const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    (void)_printf(fmt, args, serial_printf_help, NULL);
+    va_end(args);
+}
+
+void idle() {
+    while(1) {
+        x86_hlt();
     }
 }
 
-void* alloc(int n) {
-    int *ptr = (int *) mem_alloc(n * sizeof(int));
-    if (ptr == NULL_POINTER) {
-        print_string("Memory not allocated.\n");
-        screen_swap();
-    }
-    return ptr;
-}
-
-void start_kernel() {
-    idt_init();
-    isr_init();
-    fpu_init();
+void kernel_main(unsigned long magic __UNUSED__, multiboot_info_t* mbi_phys) {
+    init_serial();
+    init_vesa(TO_VMA_PTR(multiboot_info_t *, mbi_phys));
+    init_paging();
+    init_pic();
+    init_isr();
+    init_fpu();
     irq_init();
-    screen_init();
     timer_init();
-    keyboard_init();
+    init_keyboard();
     mouse_init();
-    asm volatile("sti");
-    init_dynamic_mem();
-
-    clear_screen(COLOR(0, 0, 0));
-    print_logo();
-    print_string("> ");
-    screen_swap();
-    while (1) {
-        bool input_processed = false;
-        for (int sc = 0; sc < 128; sc++) {
-            if (keyboard_char(sc)) {
-                char c = (char)sc;
-
-                if (c == '\n' || c == '\r') {
-                    input_buffer[input_len] = '\0';
-                    print_string("\n");
-                    execute_command(input_buffer);
-                    input_len = 0;
-                    screen_dirty = true;
-                }
-                else if (c == '\b') {
-                    if (input_len > 0) {
-                        input_len--;
-                        print_string("\b \b");
-                        screen_dirty = true;
-                    }
-                }
-                else {
-                    if (input_len < INPUT_BUFFER_SIZE - 1) {
-                        input_buffer[input_len++] = c;
-                        char str[2] = {c, '\0'};
-                        print_string(str);
-                        screen_dirty = true;
-                    }
-                }
-                keyboard.chars[(uint8_t)c] = false;
-                input_processed = true;
-            }
-        }
-
-        if (screen_dirty) {
-            screen_swap();
-            screen_dirty = false;
-        }
-
-        if (!input_processed) {
-            asm volatile("hlt");
-        }
-    }
-}
-
-void execute_command(char *input) {
-    if (compare_string(input, "EXIT") == 0) {
-        print_string("Stopping the CPU processes... \n");
-        screen_swap();
-        asm volatile("hlt");
-    }
-    else if (compare_string(input, "ping") == 0) {
-        print_string("pong\n> ");
-        print_nl();
-        screen_swap();
-    }
-    else if (compare_string(input, "meminfo") == 0) {
-        print_string("init_dynamic_mem()\n");
-        print_dynamic_node_size();
-        print_dynamic_mem();
-        print_nl();
-        screen_swap();
-    }
-    else if (compare_string(input, "") == 0) {
-        print_string("\n> ");
-        screen_swap();
-    }
-    else {
-        print_string("Unknown command: ");
-        print_string(input);
-        print_string("\n> ");
-        screen_swap();
-    }
+    init_fat();
+    init_window_manager();
+    create_kernel_process((void*)idle);
+    create_user_process_file("/src/apps/desktop/desktop");
+    do_first_task_jump();
+    while(1) { }
 }

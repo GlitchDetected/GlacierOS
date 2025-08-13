@@ -1,29 +1,54 @@
-OUTPUT_FORMAT("binary")
-ENTRY(_start)
+OUTPUT_FORMAT("elf64-x86-64")
+OUTPUT_ARCH(i386:x86-64)
+
+/* Physical load address */
+KERNEL_LMA = 0x100000;
+/* Virtual address start */
+KERNEL_VMA = 0xFFFF800000000000;
+
+ENTRY(start)
+
 SECTIONS
 {
-    . = 0x10000;
-
-    .text BLOCK(4K) : ALIGN(4K)
+    /* Load the Multiboot2 header physically at KERNEL_LMA */
+    . = KERNEL_LMA;
+    .boot :
     {
-        *(.text.prologue)
-        *(.text)
+        *(.multiboot_header)
     }
 
-    .rodata BLOCK(4K) : ALIGN(4K)
+    . = KERNEL_VMA;
+
+    /* Text/code section */
+    .text : AT(ADDR(.text) - KERNEL_VMA + KERNEL_LMA)
     {
-        *(.rodata)
+        *(.text*)
     }
 
-    .data BLOCK(4K) : ALIGN(4K)
+    /* Read-only data */
+    .rodata ALIGN(0x1000) : AT(ADDR(.rodata) - KERNEL_VMA + KERNEL_LMA)
     {
-        *(.data)
+        *(.rodata*)
     }
 
-    .bss BLOCK(4K) : ALIGN(4K)
+    /* Initialized data */
+    .data ALIGN(0x1000) : AT(ADDR(.data) - KERNEL_VMA + KERNEL_LMA)
     {
-        *(.bss)
+        *(.data*)
     }
 
-    end = .;
+    /* Uninitialized data */
+    .bss ALIGN(0x1000) : AT(ADDR(.bss) - KERNEL_VMA + KERNEL_LMA)
+    {
+        *(.bss*)
+        *(COMMON)
+    }
+
+    /DISCARD/ :
+    {
+        *(.comment)
+        *(.eh_frame)
+    }
+
+    kernel_end = .;
 }

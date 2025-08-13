@@ -1,14 +1,16 @@
-#include "../../include/display.h"
-#include "../../include/font.h"
-#include "../../include/memory.h"
-#include "../../include/utils.h"
+#include "../../headers/display.h"
+#include "../../headers/font.h"
+#include "../../headers/memory.h"
+#include "../../headers/strings.h"
+#include <stdint.h>
+#include "../../headers/x86.h"
 
 static size_t cursor_x = 0;
 static size_t cursor_y = 0;
-static u8 *BUFFER = (u8 *) 0xA0000;
+static uint8_t *BUFFER = (uint8_t *) 0xA0000;
 
-u8 _sbuffers[2][SCREEN_SIZE];
-u8 _sback = 0;
+uint8_t _sbuffers[2][SCREEN_SIZE];
+uint8_t _sback = 0;
 
 #define CURRENT (_sbuffers[_sback])
 #define SWAP() (_sback = 1 - _sback)
@@ -40,20 +42,18 @@ int move_offset_to_new_line(int offset) {
 }
 
 void set_char_at_video_memory(char character, int offset) {
-    u8 *vidmem = (u8 *) VIDEO_ADDRESS;
+    uint8_t *vidmem = (uint8_t *) VIDEO_ADDRESS;
     vidmem[offset] = character;
     vidmem[offset + 1] = WHITE_ON_BLACK;
 }
 
 int scroll_ln(void) {
-    // Copy all rows up by 1 row
-    memory_copy(
-        (u8 *)(get_offset(0, 1) + VIDEO_ADDRESS),
-        (u8 *)(get_offset(0, 0) + VIDEO_ADDRESS),
+    memcpy(
+        (uint8_t *)(get_offset(0, 1) + VIDEO_ADDRESS),
+        (uint8_t *)(get_offset(0, 0) + VIDEO_ADDRESS),
         MAX_COLS * (MAX_ROWS - 1) * 2
     );
 
-    // Clear the last row
     for (int col = 0; col < MAX_COLS; col++) {
         set_char_at_video_memory(' ', get_offset(col, MAX_ROWS - 1));
     }
@@ -74,7 +74,7 @@ void print_string(const char *string) {
                 cursor_y = (MAX_ROWS - 1) * CHAR_H;
             }
         } else {
-            u8 color = WHITE_ON_BLACK;
+            uint8_t color = WHITE_ON_BLACK;
 
             font_char(string[i], cursor_x, cursor_y, color);
             cursor_x += CHAR_W;
@@ -101,7 +101,7 @@ void print_nl() {
     }
 }
 
-void clear_screen(u8 color) {
+void clear_screen(uint8_t color) {
     memset(CURRENT, color, SCREEN_SIZE);
 }
 
@@ -121,17 +121,16 @@ void screen_swap() {
 }
 
 void screen_init() {
-    // configure palette with 8-bit RRRGGGBB color
-    outportb(PALETTE_MASK, 0xFF);
-    outportb(PALETTE_WRITE, 0);
-    for (u8 i = 0; i < 255; i++) {
-        outportb(PALETTE_DATA, (((i >> 5) & 0x7) * (256 / 8)) / 4);
-        outportb(PALETTE_DATA, (((i >> 2) & 0x7) * (256 / 8)) / 4);
-        outportb(PALETTE_DATA, (((i >> 0) & 0x3) * (256 / 4)) / 4);
+    outp(PALETTE_MASK, 0xFF);
+    outp(PALETTE_WRITE, 0);
+    for (uint8_t i = 0; i < 255; i++) {
+        outp(PALETTE_DATA, (((i >> 5) & 0x7) * (256 / 8)) / 4);
+        outp(PALETTE_DATA, (((i >> 2) & 0x7) * (256 / 8)) / 4);
+        outp(PALETTE_DATA, (((i >> 0) & 0x3) * (256 / 4)) / 4);
     }
 
     // set color 255 = white
-    outportb(PALETTE_DATA, 0x3F);
-    outportb(PALETTE_DATA, 0x3F);
-    outportb(PALETTE_DATA, 0x3F);
+    outp(PALETTE_DATA, 0x3F);
+    outp(PALETTE_DATA, 0x3F);
+    outp(PALETTE_DATA, 0x3F);
 }
