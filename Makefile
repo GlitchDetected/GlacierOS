@@ -31,10 +31,10 @@ OBJ_SRCS= $(C_SRCS:.c=.o) $(S_SRCS:.s=.o)
 BOOTSECT=bootsect.bin
 KERNEL=kernel.bin
 
-all: dirs ${C_SRCS} bootsect kernel apps iso
+all: dirs ${C_SRCS} bootsect kernel appsDir iso
 
-apps:
-	$(MAKE) -C src/apps all
+appsDir:
+	$(MAKE) -C apps all
 
 dirs:
 	mkdir -p bin
@@ -66,14 +66,7 @@ run: glacier-os.iso
 	qemu-system-x86_64 -drive format=raw,file=$< -d cpu_reset -monitor stdio
 
 clean:
-	$(RM) *.bin *.o *.dis *.elf
-	$(RM) bin/*.bin
-	$(RM) src/kernel/*.o
-	$(RM) src/boot/*.o src/boot/*.bin
-	$(RM) src/kernel/drivers/*.o
-	$(RM) src/kernel/cpu/*.o
-	$(RM) src/kernel/font/*.o
-	$(RM) src/kernel/libraries/*.o
-	$(RM) src/kernel/system/*.o
-	$(RM) src/kernel/filesystem/*.o
-	$(RM) *.iso
+	@echo "Cleaning build artifacts..."
+	@find . -type f -name '*.o' -exec rm -f {} +
+	@rm -f *.bin *.o *.dis *.elf *.iso bin/*
+	$(MAKE) -C apps clean

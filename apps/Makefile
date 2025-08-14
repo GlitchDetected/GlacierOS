@@ -11,7 +11,9 @@ all:
 	$(foreach app, $(apps), $(MAKE) -C $(app) $@;)
 
 clean:
-	$(foreach app, $(apps), $(MAKE) -C $(app) $@;)
+	@echo "Cleaning build artifacts in $(PWD)"
+	@find . -type f -name '*.o' -exec rm -f {} +
+	@rm -f *.bin *.elf *.dis
 
 install:
 	$(foreach app, $(apps), $(MAKE) -C $(app) $@;)

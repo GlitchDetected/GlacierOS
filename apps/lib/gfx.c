@@ -1,9 +1,9 @@
-#include "../headers/os_api.h"
-#include "../headers/window_api.h"
-#include "../headers/gfx.h"
-#include "../headers/strings.h"
-#include "../../font8x8/font8x8_basic.h"
-#include "../headers/stdlib.h"
+#include <os_api.h>
+#include <window_api.h>
+#include <gfx.h>
+#include <strings.h>
+#include "../../src/font8x8/font8x8_basic.h"
+#include <stdlib.h>
 
 void gfx_putpixel(context_t* context, int x, int y, uint32_t color) {
 	CLIP_XY(x, y);

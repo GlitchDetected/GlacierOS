@@ -20,7 +20,7 @@ objdump  = $(TARGET)-objdump
 
 C_SRCS := $(wildcard *.c) $(wildcard src/*.c) $(wildcard ../lib/*.c) $(wildcard ../lib/window_api/*.c)
 S_SRCS := $(wildcard ../lib/*.s)
-OBJ_SRCS := $(C_SRCS:.c=.o) $(S_SRCS:.s=.o)
+OBJ_SRCS := $(C_SRCS:%.c=%.o) $(S_SRCS:%.s=%.o)
 
 .PHONY: all clean install
 
@@ -42,7 +42,3 @@ $(name): $(OBJ_SRCS)
 
 %.o: %.c
 	$(CC) $(CCFLAGS) -c $< -o $@
-
-clean:
-	$(RM) *.bin *.o *.dis *.elf
-	$(RM) /*.o
