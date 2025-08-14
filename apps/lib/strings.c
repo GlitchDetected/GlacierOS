@@ -1,9 +1,9 @@
-#include "../headers/strings.h"
-#include "../headers/stdint.h"
-#include "../headers/stdlib.h"
-#include "../headers/malloc.h"
-#include "../headers/types.h"
-#include "../headers/types.h"
+#include <strings.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <malloc.h>
+#include <types.h>
+#include <ctype.h>
 
 // inline function to swap two numbers
 void swap(char *x, char *y) {

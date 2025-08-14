@@ -1,5 +1,5 @@
 .section .text
-.bits 64
+.code64
 
 .extern main
 .extern init_heap
@@ -15,7 +15,6 @@ start:
 
     # jump into user program
     call main
-
 end:
     jmp end             # infinite loop
 

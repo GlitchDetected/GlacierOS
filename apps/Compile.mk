@@ -16,28 +16,24 @@ CCFLAGS = -m64 -O2 -g \
           -I$(C_APP_INCLUDE) \
           -Wno-implicit-fallthrough -Wno-parentheses
 LIBGCC   := $(shell $(CC) $(CCFLAGS) -print-libgcc-file-name)
-
 objdump  = $(TARGET)-objdump
-xxd      = xxd
-arch ?= x86_64-elf
-linker_script := ../lib/linker.ld
 
 C_SRCS := $(wildcard *.c) $(wildcard src/*.c) $(wildcard ../lib/*.c) $(wildcard ../lib/window_api/*.c)
 S_SRCS := $(wildcard ../lib/*.s)
-OBJ_SRCS := $(patsubst %.c, build/%.o, $(C_SRCS)) $(patsubst ../lib/%.asm, build/%.o, $(S_SRCS))
+OBJ_SRCS := $(C_SRCS:.c=.o) $(S_SRCS:.s=.o)
 
-.PHONY: all clean run install%
+.PHONY: all clean install
 
 all: $(name)
 
-install%:
+install:
 	mkdir -p ../../../bin/apps/$(name)
 	cp $(name) ../../../bin/apps/$(name)
 	-cp *.kv ../../../bin/apps/$(name)
 	if [ -d assets ]; then cp assets/*.bmp ../../../bin/apps/$(name); fi
 
-$(name): $(OBJ_SRCS) $(linker_script)
-	$(ld) -nostdlib -n -T $(linker_script) -o $(name) $(OBJ_SRCS) --gc-sections
+$(name): $(OBJ_SRCS)
+	$(ld) -nostdlib -n -T ../lib/linker.ld -o $(name) $(OBJ_SRCS) --gc-sections
 	$(objdump) -D $(name) > ../../../bin/$(name).dump.s
 	$(objdump) -x $(name) >> ../../../bin/$(name).headers.txt
 
@@ -46,3 +42,7 @@ $(name): $(OBJ_SRCS) $(linker_script)
 
 %.o: %.c
 	$(CC) $(CCFLAGS) -c $< -o $@
+
+clean:
+	$(RM) *.bin *.o *.dis *.elf
+	$(RM) /*.o

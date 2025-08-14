@@ -1,7 +1,7 @@
 #pragma once
 
-#include "stdint.h"
-#include "window_api/window.h"
+#include <stdint.h>
+#include <window_api/window_ui.h>
 
 typedef struct {
     uint16_t type;              // Magic identifier: 0x4d42
