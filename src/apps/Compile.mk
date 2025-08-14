@@ -2,10 +2,19 @@ TARGET   = x86_64-elf
 CC       = $(TARGET)-gcc
 LD       = $(TARGET)-ld
 ASM      = $(TARGET)-as
-CCFLAGS  = -m32 -std=c11 -O2 -g -Wall -Wextra -Wpedantic -Wstrict-aliasing
-CCFLAGS += -Wno-pointer-arith -Wno-unused-parameter
-CCFLAGS += -nostdlib -nostdinc -ffreestanding -fno-pie -fno-stack-protector
-CCFLAGS += -fno-builtin-function -fno-builtin
+C_INCLUDE='../headers'
+C_APP_INCLUDE='./headers'
+CCFLAGS = -m64 -O2 -g \
+          -Wall -Wextra -Wpedantic -Wstrict-aliasing \
+          -Wno-pointer-arith -Wno-unused-parameter \
+          -nostdlib -nostdinc -ffreestanding -fno-pie -fno-stack-protector \
+          -fno-builtin-function -fno-builtin \
+          -fno-pic -mno-red-zone -mno-mmx -mno-sse -mno-sse2 \
+          -nostartfiles -nodefaultlibs -fno-exceptions \
+          -mcmodel=large \
+          -I$(C_INCLUDE) \
+          -I$(C_APP_INCLUDE) \
+          -Wno-implicit-fallthrough -Wno-parentheses
 LIBGCC   := $(shell $(CC) $(CCFLAGS) -print-libgcc-file-name)
 
 objdump  = $(TARGET)-objdump
@@ -27,10 +36,6 @@ install%:
 	-cp *.kv ../../../bin/apps/$(name)
 	if [ -d assets ]; then cp assets/*.bmp ../../../bin/apps/$(name); fi
 
-debug: nasm_flags += -g -F dwarf
-debug: cflags += -g
-debug: all
-
 $(name): $(OBJ_SRCS) $(linker_script)
 	$(ld) -nostdlib -n -T $(linker_script) -o $(name) $(OBJ_SRCS) --gc-sections
 	$(objdump) -D $(name) > ../../../bin/$(name).dump.s
@@ -40,4 +45,4 @@ $(name): $(OBJ_SRCS) $(linker_script)
 	$(ASM) -o $@ $<
 
 %.o: %.c
-	$(CC) -g -m32 -ffreestanding -fno-pie -fno-stack-protector -c $< -o $@
+	$(CC) $(CCFLAGS) -c $< -o $@

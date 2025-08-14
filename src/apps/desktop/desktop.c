@@ -1,10 +1,10 @@
-#include "../headers/os_api.h"
-#include "../headers/window_api.h"
-#include "../headers/gfx.h"
-#include "../headers/bmp_image.h"
-#include "../headers/dir_entry.h"
-#include "../headers/malloc.h"
-#include "../headers/stdlib.h"
+#include <os_api.h>
+#include <window_api.h>
+#include <gfx.h>
+#include <bmp_image.h>
+#include <dir_entry.h>
+#include <malloc.h>
+#include <stdlib.h>
 
 #include "app.h"
 

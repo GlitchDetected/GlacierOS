@@ -1,6 +1,17 @@
-###############################################################################
-# bootloader.s - 16-bit real mode → 32-bit protected mode → 64-bit long mode
-###############################################################################
+# 16-bit real mode → 32-bit protected mode → 64-bit long mode
+    .globl tss64
+    .globl tss64.rsp0
+    .globl kernel_stack_top
+    .globl ist_stack_1
+    .globl ist_stack_2
+    .globl interrupt_stack_table
+    .globl gdt64
+    .globl gdt64.tss
+    .globl gdt64.pointer
+
+KERNEL_VMA = 0xFFFF800000000000
+PAGE_SIZE   = 4096
+KERNEL_STACK_SIZE = PAGE_SIZE*2
 
 .section .text
 .code16gcc
@@ -35,16 +46,13 @@ _start:
     # Far jump to flush prefetch queue and enter 32-bit protected mode
     ljmp $0x08, $entry32
 
-###############################################################################
 # 32-bit protected mode
-###############################################################################
 .code32
 .globl entry32
 entry32:
-    # Temporary stack
     movl $0x90000, %esp
 
-    # Setup paging (stub, you can fill later)
+    # Setup paging
     call setup_paging_64
 
     # Enable PAE
@@ -66,9 +74,7 @@ entry32:
     # Far jump to 64-bit kernel
     ljmp $0x10, $kernel64_start
 
-###############################################################################
 # 64-bit long mode
-###############################################################################
 .code64
 .globl kernel64_start
 kernel64_start:
@@ -78,24 +84,21 @@ hlt_loop:
     hlt
     jmp hlt_loop
 
-###############################################################################
-# A20 line
-###############################################################################
+# enable A20
 enable_a20:
     inb $0x64, %al
     testb $2, %al
     jnz enable_a20
     ret
 
-###############################################################################
 # Paging setup stub
-###############################################################################
 setup_paging_64:
     ret
 
-###############################################################################
+enable_paging:
+    ret
+
 # GDT (protected + long mode)
-###############################################################################
 .align 16
 gdt_start:
 gdt_null:
@@ -134,9 +137,7 @@ gdtp:
     .word gdt_end - gdt_start - 1
     .long gdt_start
 
-###############################################################################
 # Empty IDT
-###############################################################################
 idt:
     .word 0
     .long 0
@@ -144,8 +145,5 @@ idtp:
     .word 0
     .long idt
 
-###############################################################################
-# Bootloader padding to 512 bytes
-###############################################################################
 .fill 510-(.-_start),1,0
 .word 0xAA55

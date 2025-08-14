@@ -5,4 +5,4 @@ install:
 
 .PHONY: install
 
--include ../Makefile.common
+-include ../Compile.mk
