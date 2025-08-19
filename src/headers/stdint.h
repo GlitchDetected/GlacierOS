@@ -31,6 +31,15 @@ __extension__
 typedef unsigned long long int	uint64_t;
 #endif
 
+/* Pointers sized integers */
+#if __WORDSIZE == 64
+typedef uint64_t uintptr_t;
+typedef int64_t  intptr_t;
+#else
+typedef uint32_t uintptr_t;
+typedef int32_t  intptr_t;
+#endif
+
 # if __WORDSIZE == 64
 #  define __INT64_C(c)	c ## L
 #  define __UINT64_C(c)	c ## UL

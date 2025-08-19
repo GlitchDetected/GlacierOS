@@ -17,13 +17,18 @@ OBJ_SRCS := $(patsubst %.c, %.o, $(C_SRCS)) $(patsubst ../lib/%.s, %.o, $(S_SRCS
 
 .PHONY: all clean install
 
-all: $(name)
+all: dirs $(name)
+
+dirs:
+	mkdir -p ../../bin
+	mkdir -p ../../bin/apps
+	mkdir -p ../../bin/apps/$(name)
 
 install:
-	mkdir -p ../../../bin/apps/$(name)
-	cp $(name) ../../../bin/apps/$(name)
-	-cp *.kv ../../../bin/apps/$(name)
-	if [ -d assets ]; then cp assets/*.bmp ../../../bin/apps/$(name); fi
+	mkdir -p ../../bin/apps/$(name)
+	cp $(name) ../../bin/apps/$(name)
+	-cp *.kv ../../bin/apps/$(name)
+	if [ -d assets ]; then cp assets/*.bmp ../../bin/apps/$(name); fi
 
 clean:
 	@echo "Cleaning build artifacts in $(PWD)"
@@ -35,8 +40,8 @@ debug:
 
 $(name): $(OBJ_SRCS)
 	$(LD) -nostdlib -n -T ../lib/linker.ld -o $(name) $(OBJ_SRCS) --gc-sections
-	$(objdump) -D $(name) > ../../../bin/$(name).dump.s
-	$(objdump) -x $(name) >> ../../../bin/$(name).headers.txt
+	$(objdump) -D $(name) > ../../bin/$(name).dump.s
+	$(objdump) -x $(name) >> ../../bin/$(name).headers.txt
 
 %.o: ../lib/%.s
 	$(ASM) -o $@ $<

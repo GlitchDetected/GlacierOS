@@ -6,6 +6,7 @@ TARGET   = x86_64-elf
 CC       = $(TARGET)-gcc
 LD       = $(TARGET)-ld
 ASM       = $(TARGET)-as
+OBJCOPY  = $(TARGET)-objcopy
 QEMU_ARCH = qemu-system-x86_64
 C_INCLUDE := 'src/headers'
 CCFLAGS = -m64 -O2 -g \
@@ -16,24 +17,29 @@ CCFLAGS = -m64 -O2 -g \
           -fno-pic -mno-red-zone -mno-mmx -mno-sse -mno-sse2 \
           -nostartfiles -nodefaultlibs -fno-exceptions \
           -mcmodel=large \
-          -I$(C_INCLUDE) \
+          $(foreach dir,$(shell find $(C_INCLUDE) -type d),-I$(dir)) \
           -Wno-implicit-fallthrough -Wno-parentheses
+
 QEMU_MEMORY := 128
 DISK_IMAGE = bin/disk.img
 ISO_FILE=bin/glacier-os.iso
+UEFI_BOOT_SRC = src/boot/uefi_boot.c
+UEFI_BOOT_EFI = bin/EFI/BOOT/BOOT64.EFI
+UEFI_BOOT_OBJ = bin/uefi_boot.o
+KERNEL_BIN = bin/kernel.bin
 
-BOOTSECT_SRC=\
-	src/boot/bootloader.s
-BOOTSECT_OBJS=$(BOOTSECT_SRC:.s=.o)
+# port contents qemu | grep fd
+# Learn more here: https://github.com/tianocore/tianocore.github.io/wiki/OVMF 
+# https://wiki.osdev.org/OVMF
+# https://github.com/tianocore/edk2/tree/master/OvmfPkg 
+OVMF_CODE := /opt/local/share/qemu/edk2-x86_64-code.fd
+BIN_OVMF := bin/edk2-x86_64-code.fd
 
 C_SRCS = $(wildcard src/kernel/*.c src/kernel/drivers/*.c src/kernel/cpu/*.c src/kernel/font/*.c src/kernel/libraries/*.c src/kernel/system/*.c src/kernel/filesystem/*.c)
-S_SRCS=$(filter-out $(BOOTSECT_SRC), $(wildcard src/boot/*.s src/kernel/cpu/*.s))
+S_SRCS=$(wildcard src/boot/*.s src/kernel/cpu/*.s)
 KERNEL_OBJS= $(C_SRCS:.c=.o) $(S_SRCS:.s=.o)
 
-BOOTSECT=bootsect.bin
-KERNEL=kernel.bin
-
-all: dirs ${C_SRCS} bootsect kernel appsDir install
+all: dirs ${C_SRCS} uefi_boot kernel appsDir install
 
 appsDir:
 	$(MAKE) -C apps all
@@ -41,15 +47,16 @@ appsDir:
 dirs:
 	mkdir -p bin
 	mkdir -p bin/disk
+	mkdir -p bin/EFI/BOOT
 
-bootsect: $(BOOTSECT_OBJS)
-	$(LD) -o ./bin/$(BOOTSECT) $^ -Ttext 0x7C00 --oformat=binary
+uefi_boot: $(UEFI_BOOT_SRC)
+	$(CC) $(CCFLAGS) -fshort-wchar -c $< -o bin/uefi_boot.o
+	$(LD) -nostdlib -znocombreloc -shared -Bsymbolic \
+		-Tsrc/linkers/elf_x86_64_efi.lds \
+		$(UEFI_BOOT_OBJ) -o $(UEFI_BOOT_EFI)
 
 kernel: ${KERNEL_OBJS}
-	$(LD) -o ./bin/$(KERNEL) $^ $(LDFLAGS) -Tsrc/linker.ld
-
-echo:
-	xxd bin/images/glacier-os.bin
+	$(LD) -o $(KERNEL_BIN) $^ $(LDFLAGS) -Tsrc/linkers/linker.ld
 
 %.o: %.c
 	$(CC) $(CCFLAGS) -c $< -o $@
@@ -57,22 +64,32 @@ echo:
 %.o: %.s
 	$(ASM) -o $@ $<
 
-install: bootsect kernel
-	dd if=/dev/zero of=$(DISK_IMAGE) count=81920 bs=512
-	mformat -F -v GLACIER-DISK -i $(DISK_IMAGE)
-	mcopy -svn -i $(DISK_IMAGE) $(wildcard bin/disk/*) ::.
-	dd if=/dev/zero of=$(ISO_FILE) bs=512 count=2880
-	dd if=./bin/$(BOOTSECT) of=$(ISO_FILE) conv=notrunc bs=512 seek=0 count=1
-	dd if=./bin/$(KERNEL) of=$(ISO_FILE) conv=notrunc bs=512 seek=1 count=2048
+install: uefi_boot kernel
+	# make the fat32 disk image
+	dd if=/dev/zero of=$(DISK_IMAGE) count=64 bs=1M
+	# mkfs.fat needs dosfstools (install it with macports or homebrew)
+	mkfs.fat -F 32 $(DISK_IMAGE)
+	mmd -i $(DISK_IMAGE) ::/EFI
+	mmd -i $(DISK_IMAGE) ::/EFI/BOOT
+
+	# copy EFI bootloader and kernel
+	mcopy -i $(DISK_IMAGE) $(UEFI_BOOT_EFI) ::/EFI/BOOT/BOOTX64.EFI
+	mcopy -i $(DISK_IMAGE) $(KERNEL_BIN) ::/
+
+	# make iso from the fat32 disk image
+	dd if=$(DISK_IMAGE) of=$(ISO_FILE) bs=512 conv=notrunc
 
 debug:
 	$(MAKE) CCFLAGS="$(CCFLAGS) -g" asm_flags="-g -F dwarf" all
 
-run: $(ISO_FILE)
-	$(QEMU_ARCH) -cdrom $(ISO_FILE) -m $(QEMU_MEMORY) -drive file=$(DISK_IMAGE),format=raw,index=0,media=disk  -boot order=d -serial stdio
+$(BIN_OVMF):
+	cp $(OVMF_CODE) $(BIN_OVMF)
+	chmod +r $(BIN_OVMF)
 
-run-debug: $(ISO_FILE)
-	$(QEMU_ARCH) -cdrom $(ISO_FILE) -m $(QEMU_MEMORY) -drive file=$(DISK_IMAGE),format=raw,index=0,media=disk  -boot order=d -s -S
+run: $(ISO_FILE) $(BIN_OVMF)
+	$(QEMU_ARCH) -bios $(BIN_OVMF) \
+	  -cdrom $(ISO_FILE) -m $(QEMU_MEMORY) \
+	  -serial stdio
 
 clean:
 	@echo "Cleaning build artifacts..."
