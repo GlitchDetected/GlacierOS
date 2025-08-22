@@ -48,28 +48,33 @@ EFI_STATUS close_graphic_output_service()
 /**
  * draw_rect
  */
-VOID draw_rect(IN EFI_GRAPHICS_OUTPUT_PROTOCOL* const protocol,
-	IN const UINT16 _x,
-	IN const UINT16 _y,
-	IN const UINT16 width,
-	IN const UINT16 height,
-	IN const UINT32 color)
+VOID draw_rect(EFI_GRAPHICS_OUTPUT_PROTOCOL* protocol,
+               UINT16 x, UINT16 y, UINT16 width, UINT16 height,
+               UINT32 color32)
 {
-	/** Pointer to the current pixel in the buffer. */
-	UINT32* at;
+    UINT8* fb = (UINT8*)protocol->Mode->FrameBufferBase;
+    UINTN pitch = protocol->Mode->Info->PixelsPerScanLine;
+    UINTN bpp = (protocol->Mode->Info->PixelFormat == PixelBitMask ? 8 : 4);
 
-	UINT16 row = 0;
-	UINT16 col = 0;
-	for(row = 0; row < height; row++) {
-		for(col = 0; col < width; col++) {
-			at = (UINT32*)protocol->Mode->FrameBufferBase + _x + col;
-			at += ((_y + row) * protocol->Mode->Info->PixelsPerScanLine);
+    UINT8 r = (color32 >> 16) & 0xFF;
+    UINT8 g = (color32 >> 8) & 0xFF;
+    UINT8 b = color32 & 0xFF;
 
-			*at = color;
-		}
-	}
+    if(protocol->Mode->Info->PixelFormat == PixelBlueGreenRedReserved8BitPerColor) {
+        UINT8 tmp = r; r = b; b = tmp;
+    }
+
+    for(UINT16 row = 0; row < height; row++) {
+        for(UINT16 col = 0; col < width; col++) {
+            UINT8* ptr = fb + (y + row) * pitch * bpp + (x + col) * bpp;
+            if(bpp == 4) {
+                *(UINT32*)ptr = (r << 16) | (g << 8) | b;
+            } else {
+                *(UINT64*)ptr = ((UINT64)r << 40) | ((UINT64)g << 32) | ((UINT64)b << 24);
+            }
+        }
+    }
 }
-
 
 /**
  * draw_test_screen
