@@ -5,7 +5,7 @@ KERNEL_LMA = 0x100000;
 /* Virtual address start */
 KERNEL_VMA = 0xFFFF800000000000;
 
-ENTRY(_start)
+ENTRY(kernel_main)
 
 SECTIONS
 {

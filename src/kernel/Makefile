@@ -8,6 +8,7 @@ LD       = $(TARGET)-ld
 ASM       = $(TARGET)-as
 C_INCLUDE := ../headers
 BUILD_DIR := ../../bin
+SRC_DIR = .
 CCFLAGS = -m64 -O2 -g \
           -Wall -Wextra -Wpedantic -Wstrict-aliasing \
           -Wno-pointer-arith -Wno-unused-parameter \
@@ -21,8 +22,10 @@ CCFLAGS = -m64 -O2 -g \
 
 KERNEL_BIN = ../../bin/kernel.bin
 
-C_SRCS = $(wildcard *.c drivers/*.c cpu/*.c font/*.c libraries/*.c system/*.c filesystem/*.c)
-S_SRCS=$(wildcard cpu/*.s)
+C_SRCS = $(wildcard $(SRC_DIR)/*.c $(SRC_DIR)/drivers/*.c $(SRC_DIR)/cpu/*.c \
+                    $(SRC_DIR)/font/*.c $(SRC_DIR)/libraries/*.c $(SRC_DIR)/system/*.c \
+                    $(SRC_DIR)/filesystem/*.c)
+S_SRCS=$(wildcard $(SRC_DIR)/cpu/*.s)
 KERNEL_OBJS= $(C_SRCS:.c=.o) $(S_SRCS:.s=.o)
 
 # build targets

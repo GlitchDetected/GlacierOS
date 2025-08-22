@@ -8,7 +8,7 @@ LD       = $(TARGET)-ld
 ASM       = $(TARGET)-as
 QEMU_ARCH = qemu-system-x86_64
 
-DISK_IMG_SIZE := 128
+DISK_IMG_SIZE := 2880
 DISK_IMG = bin/disk.img
 ISO_FILE=bin/glacier-os.iso
 
@@ -24,12 +24,12 @@ KERNEL_BIN := bin/kernel.bin
 # Learn more here: https://github.com/tianocore/tianocore.github.io/wiki/OVMF 
 # https://wiki.osdev.org/OVMF
 # https://github.com/tianocore/edk2/tree/master/OvmfPkg 
-OVMF_SRC := /opt/local/share/qemu/edk2-x86_64-code.fd
-OVMF_CODE := bin/edk2-x86_64-code.fd
+OVMF_CODE := /opt/local/share/qemu/edk2-x86_64-code.fd
 OVMF_VARS := bin/edk2-x86_64-vars.fd
 
 QEMU_FLAGS :=                                                \
-	-bios ${OVMF_VARS}                                         \
+	-bios ${OVMF_CODE}                                        \
+	-pflash ${OVMF_VARS} \
 	-drive if=none,id=uas-disk1,file=${DISK_IMG},format=raw    \
 	-device usb-storage,drive=uas-disk1                        \
 	-serial stdio                                              \
@@ -66,7 +66,7 @@ install:
 	mmd -i ${DISK_IMG} ::/EFI/BOOT
 	# Copy the bootloader to the boot partition.
 	mcopy -i ${DISK_IMG} ${BOOTLOADER_BINARY} ::/efi/boot/bootx64.efi
-	mcopy -i ${DISK_IMG} ${KERNEL_BINARY} ::/kernel.bin
+	mcopy -i ${DISK_IMG} ${KERNEL_BIN} ::/kernel.bin
 
 ${OVMF_VARS}:
 	cp $(OVMF_CODE) $(OVMF_VARS)
@@ -85,4 +85,5 @@ run: ${DISK_IMG} ${OVMF_VARS}
 clean:
 	make clean -C ${BOOTLOADER_DIR}
 	make clean -C ${KERNEL_DIR}
+	make clean -C apps
 	rm -rf ${BUILD_DIR}
