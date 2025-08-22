@@ -6,40 +6,44 @@ TARGET   = x86_64-elf
 CC       = $(TARGET)-gcc
 LD       = $(TARGET)-ld
 ASM       = $(TARGET)-as
-OBJCOPY  = $(TARGET)-objcopy
 QEMU_ARCH = qemu-system-x86_64
-C_INCLUDE := 'src/headers'
-CCFLAGS = -m64 -O2 -g \
-          -Wall -Wextra -Wpedantic -Wstrict-aliasing \
-          -Wno-pointer-arith -Wno-unused-parameter \
-          -nostdlib -nostdinc -ffreestanding -fno-pie -fno-stack-protector \
-          -fno-builtin-function -fno-builtin \
-          -fno-pic -mno-red-zone -mno-mmx -mno-sse -mno-sse2 \
-          -nostartfiles -nodefaultlibs -fno-exceptions \
-          -mcmodel=large \
-          $(foreach dir,$(shell find $(C_INCLUDE) -type d),-I$(dir)) \
-          -Wno-implicit-fallthrough -Wno-parentheses
 
-QEMU_MEMORY := 128
-DISK_IMAGE = bin/disk.img
+DISK_IMG_SIZE := 128
+DISK_IMG = bin/disk.img
 ISO_FILE=bin/glacier-os.iso
-UEFI_BOOT_SRC = src/boot/uefi_boot.c
-UEFI_BOOT_EFI = bin/EFI/BOOT/BOOT64.EFI
-UEFI_BOOT_OBJ = bin/uefi_boot.o
-KERNEL_BIN = bin/kernel.bin
+
+BUILD_DIR         := bin
+
+BOOTLOADER_DIR    := src/bootloader
+BOOTLOADER_BINARY := bin/bootx64.efi
+
+KERNEL_DIR := src/kernel
+KERNEL_BIN := bin/kernel.bin
 
 # port contents qemu | grep fd
 # Learn more here: https://github.com/tianocore/tianocore.github.io/wiki/OVMF 
 # https://wiki.osdev.org/OVMF
 # https://github.com/tianocore/edk2/tree/master/OvmfPkg 
-OVMF_CODE := /opt/local/share/qemu/edk2-x86_64-code.fd
-BIN_OVMF := bin/edk2-x86_64-code.fd
+OVMF_SRC := /opt/local/share/qemu/edk2-x86_64-code.fd
+OVMF_CODE := bin/edk2-x86_64-code.fd
+OVMF_VARS := bin/edk2-x86_64-vars.fd
 
-C_SRCS = $(wildcard src/kernel/*.c src/kernel/drivers/*.c src/kernel/cpu/*.c src/kernel/font/*.c src/kernel/libraries/*.c src/kernel/system/*.c src/kernel/filesystem/*.c)
-S_SRCS=$(wildcard src/boot/*.s src/kernel/cpu/*.s)
-KERNEL_OBJS= $(C_SRCS:.c=.o) $(S_SRCS:.s=.o)
+QEMU_FLAGS :=                                                \
+	-bios ${OVMF_VARS}                                         \
+	-drive if=none,id=uas-disk1,file=${DISK_IMG},format=raw    \
+	-device usb-storage,drive=uas-disk1                        \
+	-serial stdio                                              \
+	-usb                                                       \
+	-net none                                                  \
+	-vga std
 
-all: dirs ${C_SRCS} uefi_boot kernel appsDir install
+all: dirs bootloader kernel appsDir install
+
+bootloader:
+	make -C $(BOOTLOADER_DIR)
+
+kernel:
+	make -C $(KERNEL_DIR)
 
 appsDir:
 	$(MAKE) -C apps all
@@ -47,16 +51,6 @@ appsDir:
 dirs:
 	mkdir -p bin
 	mkdir -p bin/disk
-	mkdir -p bin/EFI/BOOT
-
-uefi_boot: $(UEFI_BOOT_SRC)
-	$(CC) $(CCFLAGS) -fshort-wchar -c $< -o bin/uefi_boot.o
-	$(LD) -nostdlib -znocombreloc -shared -Bsymbolic \
-		-Tsrc/linkers/elf_x86_64_efi.lds \
-		$(UEFI_BOOT_OBJ) -o $(UEFI_BOOT_EFI)
-
-kernel: ${KERNEL_OBJS}
-	$(LD) -o $(KERNEL_BIN) $^ $(LDFLAGS) -Tsrc/linkers/linker.ld
 
 %.o: %.c
 	$(CC) $(CCFLAGS) -c $< -o $@
@@ -64,36 +58,31 @@ kernel: ${KERNEL_OBJS}
 %.o: %.s
 	$(ASM) -o $@ $<
 
-install: uefi_boot kernel
-	# make the fat32 disk image
-	dd if=/dev/zero of=$(DISK_IMAGE) count=64 bs=1M
-	# mkfs.fat needs dosfstools (install it with macports or homebrew)
-	mkfs.fat -F 32 $(DISK_IMAGE)
-	mmd -i $(DISK_IMAGE) ::/EFI
-	mmd -i $(DISK_IMAGE) ::/EFI/BOOT
+install: 
+	# create uefi boot disk image in dos format
+	dd if=/dev/zero of=${DISK_IMG} bs=1k count=${DISK_IMG_SIZE}
+	mformat -i ${DISK_IMG} -f ${DISK_IMG_SIZE} ::
+	mmd -i ${DISK_IMG} ::/EFI
+	mmd -i ${DISK_IMG} ::/EFI/BOOT
+	# Copy the bootloader to the boot partition.
+	mcopy -i ${DISK_IMG} ${BOOTLOADER_BINARY} ::/efi/boot/bootx64.efi
+	mcopy -i ${DISK_IMG} ${KERNEL_BINARY} ::/kernel.bin
 
-	# copy EFI bootloader and kernel
-	mcopy -i $(DISK_IMAGE) $(UEFI_BOOT_EFI) ::/EFI/BOOT/BOOTX64.EFI
-	mcopy -i $(DISK_IMAGE) $(KERNEL_BIN) ::/
+${OVMF_VARS}:
+	cp $(OVMF_CODE) $(OVMF_VARS)
+	chmod +w $(OVMF_VARS)
 
-	# make iso from the fat32 disk image
-	dd if=$(DISK_IMAGE) of=$(ISO_FILE) bs=512 conv=notrunc
+run-debug: ${DISK_IMG} ${OVMF_VARS}
+	qemu-system-x86_64    \
+		${QEMU_FLAGS}       \
+		-S                  \
+		-gdb tcp::1234
 
-debug:
-	$(MAKE) CCFLAGS="$(CCFLAGS) -g" asm_flags="-g -F dwarf" all
-
-$(BIN_OVMF):
-	cp $(OVMF_CODE) $(BIN_OVMF)
-	chmod +r $(BIN_OVMF)
-
-run: $(ISO_FILE) $(BIN_OVMF)
-	$(QEMU_ARCH) -bios $(BIN_OVMF) \
-	  -cdrom $(ISO_FILE) -m $(QEMU_MEMORY) \
-	  -serial stdio
+run: ${DISK_IMG} ${OVMF_VARS}
+	qemu-system-x86_64    \
+		${QEMU_FLAGS}
 
 clean:
-	@echo "Cleaning build artifacts..."
-	@find . -type f -name '*.o' -exec rm -f {} +
-	@rm -rf bin/*
-	@rm -f *.bin *.o *.dis *.elf *.iso
-	$(MAKE) -C apps clean
+	make clean -C ${BOOTLOADER_DIR}
+	make clean -C ${KERNEL_DIR}
+	rm -rf ${BUILD_DIR}

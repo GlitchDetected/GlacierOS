@@ -4,6 +4,11 @@
 # chmod +x toolchain.sh
 # ./toolchain.sh
 set -e
+unset CC
+unset CXX
+unset LD
+unset AS
+unset CROSS_COMPILE
 
 PREFIX="$HOME/compiled"
 TARGET=x86_64-elf
@@ -66,7 +71,13 @@ echo "[*] Building binutils..."
 missing_file https://ftp.gnu.org/gnu/binutils/binutils-2.45.tar.xz
 tar -xf binutils-2.45.tar.xz
 mkdir -p build-binutils && cd build-binutils
-../binutils-2.45/configure --target=$TARGET --prefix="$PREFIX" --with-sysroot --disable-nls --disable-werror
+../binutils-2.45/configure \
+  --target=$TARGET \
+  --prefix="$PREFIX" \
+  --with-sysroot \
+  --disable-nls \
+  --disable-werror \
+  --enable-targets=all
 make -j"$(sysctl -n hw.ncpu)"
 make install
 cd ..
