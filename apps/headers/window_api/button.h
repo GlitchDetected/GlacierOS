@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../strings.h"
+#include "../string.h"
 #include "../bmp_image.h"
 
 #define WINDOW_TYPE_BUTTON 1

@@ -5,7 +5,7 @@
 #include "../headers/memory.h"
 #include <stdint.h>
 #include <stdbool.h>
-#include "../headers/strings.h"
+#include "../headers/string.h"
 #include "../headers/x86.h"
 #include "../headers/isr.h"
 

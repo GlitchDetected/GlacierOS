@@ -1,6 +1,6 @@
 #include "../headers/stdlib.h"
 #include "../headers/stdint.h"
-#include "../headers/strings.h"
+#include "../headers/string.h"
 
 static unsigned long int next = 1;
 

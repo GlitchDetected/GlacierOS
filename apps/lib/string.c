@@ -1,7 +1,9 @@
+#include <string.h>
 #include <stdint.h>
-#include "../../headers/stdlib.h"
-#include "../../headers/strings.h"
-#include "../../headers/types.h"
+#include <stdlib.h>
+#include <malloc.h>
+#include <types.h>
+#include <ctype.h>
 
 // inline function to swap two numbers
 void swap(char *x, char *y) {
@@ -10,8 +12,9 @@ void swap(char *x, char *y) {
 
 // function to reverse buffer[i..j]
 char* reverse(char *buffer, int i, int j) {
-	while (i < j)
+	while (i < j) {
 		swap(&buffer[i++], &buffer[j--]);
+	}
 
 	return buffer;
 }
@@ -54,7 +57,42 @@ char* itoa(int value, char* buffer, int base) {
 	return reverse(buffer, 0, i - 1);
 }
 
+int atoi(char* string) {
+  int result = 0;
+  unsigned int digit;
+  int sign;
 
+  while (isspace(*string)) {
+    string += 1;
+  }
+
+  /*
+   * Check for a sign.
+   */
+
+  if (*string == '-') {
+      sign = 1;
+      string += 1;
+  } else {
+      sign = 0;
+      if (*string == '+') {
+          string += 1;
+      }
+  }
+
+  for ( ; ; string += 1) {
+      digit = *string - '0';
+      if (digit > 9) {
+          break;
+      }
+      result = (10*result) + digit;
+  }
+
+  if (sign) {
+      return -result;
+  }
+  return result;
+}
 void *memset(void* dest, register int value, register uint64_t len) {
 	register unsigned char *ptr = (unsigned char*)dest;
 	while(len-- > 0) {
@@ -72,44 +110,23 @@ void *memcpy(void *dest, void *src, register uint64_t len) {
 	return dest;
 }
 
-int memcmp (const void *str1, const void *str2, size_t count) {
-  register const unsigned char *s1 = (const unsigned char*)str1;
-  register const unsigned char *s2 = (const unsigned char*)str2;
-
-  while (count-- > 0) {
-    if (*s1++ != *s2++) {
-		  return s1[-1] < s2[-1] ? -1 : 1;
-    }
-  }
-  return 0;
-}
-
 size_t strlen(const char *str) {
 	size_t s;
-	for(s=0; *str!='\0'; str++) {
-    	s++;
+	for(s=0; *str != '\0'; str++) {
+    s++;
 	}
 	return s;
 }
 
-char* strcpy(char* dest, const char* src) {
-	char *tmp = dest;
-	while (*dest++ = *src++) ;
-	return tmp;
+char* strcpy(char *dest, const char *src) {
+  char *temp = dest;
+  while(*dest++ = *src++);
+  return temp;
 }
 
-char* strncpy(char* dest, const char* src, size_t num) {
-	char* ptr = dest;
-	if (dest == NULL)
-		return NULL;
-	while (*src && num--) {
-		*dest = *src;
-		dest++;
-		src++;
-	}
-	*dest = '\0';
-
-	return ptr;
+char *strdup(const char *str) {
+	char *new_string = malloc(strlen(str) + 1);
+	return strcpy(new_string, str);
 }
 
 int strcmp(const char* s1, const char* s2) {

@@ -7,7 +7,7 @@
 #include "../../headers/malloc.h"
 #include "../../headers/stdlib.h"
 #include "../../headers/stdint.h"
-#include "../../headers/strings.h"
+#include "../../headers/string.h"
 #include "../../headers/gfx.h"
 #include "../../headers/bmp_image.h"
 

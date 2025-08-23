@@ -1,7 +1,7 @@
 #include "../../headers/isr.h"
 #include "../../headers/kernel.h"
 #include "../../headers/x86.h"
-#include "../../headers/strings.h"
+#include "../../headers/string.h"
 #include "../../headers/process.h"
 #include "../../headers/heap.h"
 

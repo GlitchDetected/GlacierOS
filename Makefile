@@ -18,7 +18,7 @@ BOOTLOADER_DIR    := src/bootloader
 BOOTLOADER_BINARY := bin/bootx64.efi
 
 KERNEL_DIR := src/kernel
-KERNEL_BIN := bin/kernel.bin
+KERNEL_BIN := bin/kernel.elf
 
 # port contents qemu | grep fd
 # Learn more here: https://github.com/tianocore/tianocore.github.io/wiki/OVMF 
@@ -66,11 +66,21 @@ install:
 	mmd -i ${DISK_IMG} ::/EFI/BOOT
 	# Copy the bootloader to the boot partition.
 	mcopy -i ${DISK_IMG} ${BOOTLOADER_BINARY} ::/efi/boot/bootx64.efi
-	mcopy -i ${DISK_IMG} ${KERNEL_BIN} ::/kernel.bin
+	mcopy -i ${DISK_IMG} ${KERNEL_BIN} ::/kernel.elf
 
 ${OVMF_VARS}:
 	cp $(OVMF_CODE) $(OVMF_VARS)
 	chmod +w $(OVMF_VARS)
+
+debug:
+# Offset = RIP - ImageBase
+#        = 0x62F7C04 - 0x62F2000
+#        = 0x0005C04
+# ELF_VMA = KERNEL_PHYS_START + Offset
+#         = 0x100000 + 0x5C04
+#         = 0x105C04
+
+	x86_64-elf-addr2line -e bin/kernel.elf -f -C
 
 run-debug: ${DISK_IMG} ${OVMF_VARS}
 	qemu-system-x86_64    \

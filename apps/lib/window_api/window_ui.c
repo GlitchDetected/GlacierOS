@@ -5,7 +5,7 @@
 #include "../../headers/malloc.h"
 #include "../../headers/stdlib.h"
 #include "../../headers/stdint.h"
-#include "../../headers/strings.h"
+#include "../../headers/string.h"
 #include "../../headers/gfx.h"
 
 static window_t *window_find_focused_component(window_t *win, message_t *msg);

@@ -1,11 +1,11 @@
-#include "../../headers/windows.h"
-#include "../../headers/heap.h"
-#include "../../headers/process.h"
-#include "../../headers/kernel.h"
-#include "../../headers/strings.h"
-#include "../../headers/vesa.h"
-#include "../../headers/isr.h"
-#include "../../headers/gfx.h"
+#include <windows.h>
+#include <heap.h>
+#include <process.h>
+#include <kernel.h>
+#include <string.h>
+#include <graphics.h>
+#include <isr.h>
+#include <gfx.h>
 
 // syscall_windows_create(int x, int y, int width, int height, char* title)
 uint64_t syscall_windows_create(isr_ctx_t *regs) {

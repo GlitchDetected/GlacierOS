@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../headers/os_api.h"
-#include "../headers/strings.h"
+#include "../headers/string.h"
 #include "../headers/dir_entry.h"
 #include "../headers/stdio.h"
 #include "../headers/kv_file.h"

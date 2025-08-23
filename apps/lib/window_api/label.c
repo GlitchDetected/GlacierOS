@@ -7,7 +7,7 @@
 #include "../../headers/malloc.h"
 #include "../../headers/stdlib.h"
 #include "../../headers/stdint.h"
-#include "../../headers/strings.h"
+#include "../../headers/string.h"
 #include "../../headers/gfx.h"
 
 label_t *label_create(window_t *parent, int x, int y, int width, int height, char* title, int id) {

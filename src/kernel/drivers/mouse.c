@@ -1,6 +1,6 @@
 #include "../../headers/windows.h"
 #include "../../headers/mouse.h"
-#include "../../headers/strings.h"
+#include "../../headers/string.h"
 #include "../../headers/kernel.h"
 #include "../../headers/gfx.h"
 #include "../../headers/isr.h"

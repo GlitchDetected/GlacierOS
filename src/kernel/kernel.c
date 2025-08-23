@@ -1,23 +1,23 @@
-#include "../headers/isr.h"
-#include "../headers/irq.h"
-#include "../headers/timer.h"
-#include "../headers/keyboard.h"
-#include "../headers/memory.h"
-#include "../headers/fpu.h"
-#include "../headers/pic.h"
-#include "../headers/kernel.h"
-#include "../headers/mouse.h"
-#include "../headers/process.h"
-#include "../headers/windows.h"
-#include "../headers/paging.h"
-#include "../headers/vesa.h"
-#include "../headers/fat.h"
+#include <isr.h>
+#include <timer.h>
+#include <keyboard.h>
+#include <memory.h>
+#include <fpu.h>
+#include <pic.h>
+#include <kernel.h>
+#include <mouse.h>
+#include <process.h>
+#include <windows.h>
+#include <paging.h>
+#include <graphics.h>
+#include <fat.h>
+#include <x86.h>
+#include <serial.h>
+#include <stdarg.h>
+#include <printf.h>
+#include <ata.h>
+#include <bootinfo.h>
 #include <stdint.h>
-#include "../headers/x86.h"
-#include "../headers/serial.h"
-#include "../headers/stdarg.h"
-#include "../headers/printf.h"
-#include "../headers/ata.h"
 
 #define GDT_NULL        0x00
 #define GDT_KERNEL_CODE 0x08
@@ -25,6 +25,12 @@
 #define GDT_USER_CODE   0x18
 #define GDT_USER_DATA   0x20
 #define GDT_TSS         0x28
+
+/**
+ * @brief main program
+ * This is the kernel main entry point and its main program.
+ */
+void kernel_main(Boot_Info* boot_info);
 
 int serial_printf_help(unsigned c, void *ptr __UNUSED__) {
     serial_write_com(1, c);
@@ -53,14 +59,13 @@ void idle() {
     }
 }
 
-void kernel_main(unsigned long magic __UNUSED__, multiboot_info_t* mbi_phys) {
+void kernel_main(Boot_Info* boot_info) {
     init_serial();
-    init_vesa(TO_VMA_PTR(multiboot_info_t *, mbi_phys));
+    init_graphics(boot_info);
     init_paging();
     init_pic();
     init_isr();
     init_fpu();
-    init_irq();
     init_timer();
     init_keyboard();
     init_mouse();

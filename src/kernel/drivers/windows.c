@@ -1,16 +1,16 @@
-#include "../../headers/windows.h"
-#include "../../headers/heap.h"
-#include "../../headers/process.h"
-#include "../../headers/strings.h"
-#include "../../headers/kernel.h"
-#include "../../headers/assert.h"
-#include "../../headers/mouse.h"
-#include "../../headers/stdio.h"
-#include "../../headers/timer.h"
-#include "../../headers/vesa.h"
-#include "../../headers/gfx.h"
-#include "../../headers/isr.h"
-#include "../../headers/stdlib.h"
+#include <windows.h>
+#include <heap.h>
+#include <process.h>
+#include <string.h>
+#include <kernel.h>
+#include <assert.h>
+#include <mouse.h>
+#include <stdio.h>
+#include <timer.h>
+#include <graphics.h>
+#include <gfx.h>
+#include <isr.h>
+#include <stdlib.h>
 
 #define WINDOW_BAR_HEIGHT  44
 
@@ -18,7 +18,7 @@
 
 window_t* window_list[MAX_WINDOW_COUNT];
 window_t* focused_window;
-video_info_t buffer_video_info;
+struct graphics_info buffer_video_info;
 uint64_t __last_update_tick = 0;
 uint16_t __window_handle = 1000; // 1000 just magic number to start from (0 means no window)
 int __window_count = 0;
@@ -248,8 +248,8 @@ void window_draw_mouse() {
 				}
 	    	if (mouse_x + j >= 0 && mouse_x + j < buffer_video_info.width &&
     		  mouse_y + i >= 0 && mouse_y + i < buffer_video_info.height) {
-					((uint32_t*)buffer_video_info.addr)[(mouse_y + i) * buffer_video_info.width + mouse_x + j] = color;
-				}
+				  buffer_video_info.framebuffer[(mouse_y + i) * buffer_video_info.pitch + mouse_x + j] = color;
+        }
 			}
 			buf++;
 		}
@@ -261,7 +261,9 @@ void present_video_buffer() {
   	while ((inpb(0x3DA) & 0x08));
   	while (!(inpb(0x3DA) & 0x08));
  	#endif
-  fast_memcpy((unsigned char*)vesa_video_info.addr, (unsigned char*)buffer_video_info.addr, VIDEO_INFO_MEM_SIZE(buffer_video_info));
+  fast_memcpy((unsigned char*)graphics.framebuffer,
+              (unsigned char*)buffer_video_info.framebuffer,
+              buffer_video_info.width * buffer_video_info.height * (buffer_video_info.bpp / 8));
 }
 
 void window_bring_to_front(int win_idx) {
@@ -423,15 +425,15 @@ bool window_pop_message(window_t* win, message_t* msg_out) {
 
 
 void init_window_manager() {
-	DEBUG("SIZEOF LIST :%i\n", sizeof(window_list));
-	memset(window_list, 0, MAX_WINDOW_COUNT * sizeof(window_t*));
-	memcpy(&buffer_video_info, &vesa_video_info, sizeof(video_info_t));
-	uint32_t screen_size = VIDEO_INFO_MEM_SIZE(vesa_video_info);
-	DEBUG("WIN: Allocating double buffer size : %i (%i MB)\n", screen_size, screen_size / 1024 / 1024);
-	buffer_video_info.addr = (uint64_t)malloc(screen_size);
-  DEBUG("WIN: Double Frame buffer addr: 0x%X\n", buffer_video_info.addr);
-  DEBUG("WIN: Double Frame buffer linear addr: 0x%X\n", buffer_video_info.linear_addr);
-  DEBUG("WIN: Double Frame buffer info: %i x %i : %ibpp\n", buffer_video_info.width, buffer_video_info.height, buffer_video_info.bits);
-  DEBUG("WIN: Double Frame buffer pitch: %i\n", buffer_video_info.pitch);
-  DEBUG("WIN: Double Frame buffer type: %i\n", buffer_video_info.type);
+    DEBUG("SIZEOF LIST :%i\n", sizeof(window_list));
+    memset(window_list, 0, MAX_WINDOW_COUNT * sizeof(window_t*));
+    memcpy(&buffer_video_info, &graphics, sizeof(struct graphics_info));
+    uint32_t screen_size = buffer_video_info.width * buffer_video_info.height * (buffer_video_info.bpp / 8);
+    DEBUG("WIN: Allocating double buffer size : %i (%i MB)\n", screen_size, screen_size / 1024 / 1024);
+    buffer_video_info.framebuffer = (uint32_t*)malloc(screen_size);
+    DEBUG("WIN: Double Frame buffer addr: %p\n", buffer_video_info.framebuffer);
+    DEBUG("WIN: Double Frame buffer info: %i x %i : %ibpp\n",
+          buffer_video_info.width, buffer_video_info.height, buffer_video_info.bpp);
+    DEBUG("WIN: Double Frame buffer pitch: %i\n", buffer_video_info.pitch);
 }
+

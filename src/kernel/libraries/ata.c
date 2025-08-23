@@ -4,7 +4,7 @@
 #include "../../headers/ata.h"
 #include "../../headers/kernel.h"
 #include "../../headers/heap.h"
-#include "../../headers/strings.h"
+#include "../../headers/string.h"
 #include "../../headers/x86.h"
 
 uint8_t ata_pm = 0;

@@ -9,7 +9,7 @@
 #include <serial.h>
 
 /** The path to the kernel executable binary on the bootable media. */
-#define KERNEL_EXECUTABLE_PATH L"\\kernel.bin"
+#define KERNEL_EXECUTABLE_PATH L"\\kernel.elf"
 
 /**
  * Whether to prompt, and wait for user input before rebooting in the case

@@ -4,8 +4,8 @@
 #include "../headers/kernel.h"
 #include "../headers/memory.h"
 #include <stdint.h>
-#include "../headers/strings.h"
-#include "../headers/vesa.h"
+#include "../headers/string.h"
+#include <graphics.h>
 #include "../headers/x86.h"
 #include "../headers/isr.h"
 
@@ -55,7 +55,7 @@ static void init_paging_user() {
 }
 
 static void init_paging_video() {
-  uint64_t video_framebuffer = vesa_video_info.linear_addr;
+  uint64_t video_framebuffer = (uint64_t)graphics.framebuffer;
   DEBUG("MMU: Video memory %0x\n", video_framebuffer);
 
   memset(&pdpe_video, 0, sizeof(pdpe_t) * 512);

@@ -35,8 +35,7 @@ Uefi_Serial_Service serial_service;
  * Whether to draw a test pattern to video output to test the graphics output
  * service.
  */
-#define DRAW_TEST_SCREEN 1
-
+#define DRAW_TEST_SCREEN 0
 
 /**
  * efi_main

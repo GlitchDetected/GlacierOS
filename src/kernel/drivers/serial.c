@@ -1,6 +1,9 @@
-#include "../../headers/serial.h"
+#include <serial.h>
 #include <stdint.h>
-#include "../../headers/x86.h"
+#include <x86.h>
+#include <types.h>
+#include <stdbool.h>
+#include <string.h>
 
 #define COM1_PORT 0x3F8
 #define COM2_PORT 0x2F8
@@ -46,4 +49,37 @@ void serial_write_com(int com, unsigned char data)
     while (serial_transmit_empty(port) == 0)
         __builtin_ia32_pause();
     outp(port, data);
+}
+
+bool serial_recieve_buffer_empty(void)
+{
+	return inp(COM1_PORT + 5) & 1;
+}
+
+char serial_getchar(void)
+{
+	while(!serial_recieve_buffer_empty());
+
+	return inp(COM1_PORT);
+}
+
+bool serial_transmit_buffer_empty(void)
+{
+	return (inp(COM1_PORT + 5) & 0x20) != 0;
+}
+
+void serial_write_char(char a)
+{
+	while(!serial_transmit_buffer_empty());
+
+	outp(COM1_PORT, a);
+}
+
+void serial_write(const char* str)
+{
+	/** The length of the string being writen to serial out */
+	size_t str_len = strlen(str);
+	for(size_t i = 0; i < str_len; i++) {
+		serial_write_char(str[i]);
+	}
 }

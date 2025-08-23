@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include "../../headers/stdarg.h"
-#include "../../headers/strings.h"
+#include "../../headers/string.h"
 #include "../../headers/printf.h"
 
 

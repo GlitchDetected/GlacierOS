@@ -1,7 +1,7 @@
 #include <os_api.h>
 #include <window_api.h>
 #include <gfx.h>
-#include <strings.h>
+#include <string.h>
 #include "../../src/font8x8/font8x8_basic.h"
 #include <stdlib.h>
 

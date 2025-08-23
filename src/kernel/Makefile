@@ -9,7 +9,7 @@ ASM       = $(TARGET)-as
 C_INCLUDE := ../headers
 BUILD_DIR := ../../bin
 SRC_DIR = .
-CCFLAGS = -m64 -O2 -g \
+CCFLAGS = -m64 -O2 -g3 -ggdb -fno-omit-frame-pointer \
           -Wall -Wextra -Wpedantic -Wstrict-aliasing \
           -Wno-pointer-arith -Wno-unused-parameter \
           -nostdlib -nostdinc -ffreestanding -fno-pie -fno-stack-protector \
@@ -20,19 +20,24 @@ CCFLAGS = -m64 -O2 -g \
           $(foreach dir,$(shell find $(C_INCLUDE) -type d),-I$(dir)) \
           -Wno-implicit-fallthrough -Wno-parentheses
 
-KERNEL_BIN = ../../bin/kernel.bin
+LDFLAGS :=          \
+	-ffreestanding    \
+	-O2               \
+	-nostdlib         \
+	-z max-page-size=0x1000 \
+    -g3 -ggdb
 
-C_SRCS = $(wildcard $(SRC_DIR)/*.c $(SRC_DIR)/drivers/*.c $(SRC_DIR)/cpu/*.c \
-                    $(SRC_DIR)/font/*.c $(SRC_DIR)/libraries/*.c $(SRC_DIR)/system/*.c \
-                    $(SRC_DIR)/filesystem/*.c)
-S_SRCS=$(wildcard $(SRC_DIR)/cpu/*.s)
+KERNEL_BIN = ../../bin/kernel.elf
+
+C_SRCS := $(shell find $(SRC_DIR) -name '*.c')
+S_SRCS := $(shell find $(SRC_DIR) -name '*.s')
 KERNEL_OBJS= $(C_SRCS:.c=.o) $(S_SRCS:.s=.o)
 
 # build targets
 all: kernel
 
 kernel: ${KERNEL_OBJS}
-	$(LD) -o $(KERNEL_BIN) $^ $(LDFLAGS) -T../linkers/linker.ld
+	$(CC) -T ../linkers/linker.ld -o $(KERNEL_BIN) $^ $(LDFLAGS)
 
 %.o: %.c
 	$(CC) $(CCFLAGS) -c $< -o $@

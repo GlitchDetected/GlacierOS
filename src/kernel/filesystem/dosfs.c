@@ -8,11 +8,12 @@
 	You cannot re-copyright or restrict use of the code as released by Lewin Edwards.
 */
 
-#include "../../headers/dosfs.h"
-#include "../../headers/strings.h"
-#include "../../headers/stdlib.h"
-#include <stdint.h>
-#include "../../headers/kernel.h"
+#include <dosfs.h>
+#include <string.h>
+#include <stdlib.h>
+#include <kernel.h>
+
+
 
 /*
 	Get starting sector# of specified partition on drive #unit
@@ -104,18 +105,18 @@ uint32_t DFS_GetVolInfo(uint8_t unit, uint8_t *scratchsector, uint32_t startsect
 
 		memcpy(volinfo->label, lbr->ebpb.ebpb32.label, 11);
 		volinfo->label[11] = 0;
-
+	
 // tag: OEMID, refer dosfs.h
 //		memcpy(volinfo->system, lbr->ebpb.ebpb32.system, 8);
-//		volinfo->system[8] = 0;
+//		volinfo->system[8] = 0; 
 	}
 	else {
 		memcpy(volinfo->label, lbr->ebpb.ebpb.label, 11);
 		volinfo->label[11] = 0;
-
+	
 // tag: OEMID, refer dosfs.h
 //		memcpy(volinfo->system, lbr->ebpb.ebpb.system, 8);
-//		volinfo->system[8] = 0;
+//		volinfo->system[8] = 0; 
 	}
 
 	// note: if rootentries is 0, we must be in a FAT32 volume.
@@ -174,7 +175,7 @@ uint32_t DFS_GetFAT(PVOLINFO volinfo, uint8_t *scratch, uint32_t *scratchcache, 
 		offset = cluster * 4;
 	}
 	else
-		return 0x0ffffff7;	// FAT32 bad cluster
+		return 0x0ffffff7;	// FAT32 bad cluster	
 
 	// at this point, offset is the BYTE offset of the desired sector from the start
 	// of the FAT. Calculate the physical sector containing this FAT entry.
@@ -186,7 +187,7 @@ uint32_t DFS_GetFAT(PVOLINFO volinfo, uint8_t *scratch, uint32_t *scratchcache, 
 			// avoid anyone assuming that this cache value is still valid, which
 			// might cause disk corruption
 			*scratchcache = 0;
-			return 0x0ffffff7;	// FAT32 bad cluster
+			return 0x0ffffff7;	// FAT32 bad cluster	
 		}
 		*scratchcache = sector;
 	}
@@ -208,7 +209,7 @@ uint32_t DFS_GetFAT(PVOLINFO volinfo, uint8_t *scratch, uint32_t *scratchcache, 
 				// avoid anyone assuming that this cache value is still valid, which
 				// might cause disk corruption
 				*scratchcache = 0;
-				return 0x0ffffff7;	// FAT32 bad cluster
+				return 0x0ffffff7;	// FAT32 bad cluster	
 			}
 			*scratchcache = sector;
 			// Thanks to Claudio Leonel for pointing out this missing line.
@@ -234,7 +235,7 @@ uint32_t DFS_GetFAT(PVOLINFO volinfo, uint8_t *scratch, uint32_t *scratchcache, 
 		  ((uint32_t) scratch[offset+3]) << 24) & 0x0fffffff;
 	}
 	else
-		result = 0x0ffffff7;	// FAT32 bad cluster
+		result = 0x0ffffff7;	// FAT32 bad cluster	
 	return result;
 }
 
@@ -271,7 +272,7 @@ uint32_t DFS_SetFAT(PVOLINFO volinfo, uint8_t *scratch, uint32_t *scratchcache, 
 		new_contents &=0x0fffffff;	// FAT32 is really "FAT28"
 	}
 	else
-		return DFS_ERRMISC;
+		return DFS_ERRMISC;	
 
 	// at this point, offset is the BYTE offset of the desired sector from the start
 	// of the FAT. Calculate the physical sector containing this FAT entry.
@@ -429,7 +430,7 @@ uint8_t *DFS_CanonicalToDir(uint8_t *dest, uint8_t *src)
 uint32_t DFS_GetFreeFAT(PVOLINFO volinfo, uint8_t *scratch)
 {
 	uint32_t i, result = 0xffffffff, scratchcache = 0;
-
+	
 	// Search starts at cluster 2, which is the first usable cluster
 	// NOTE: This search can't terminate at a bad cluster, because there might
 	// legitimately be bad clusters on the disk.
@@ -454,6 +455,17 @@ uint32_t DFS_OpenDir(PVOLINFO volinfo, uint8_t *dirname, PDIRINFO dirinfo)
 {
 	// Default behavior is a regular search for existing entries
 	dirinfo->flags = 0;
+
+	if (!dirinfo) {
+        DEBUG("DFS_OpenDir: dirinfo is NULL\n");
+        return DFS_ERRMISC;
+    }
+    if (!dirinfo->scratch) {
+        DEBUG("DFS_OpenDir: dirinfo->scratch is NULL - caller must assign di.scratch to a SECTOR_SIZE buffer\n");
+        return DFS_ERRMISC;
+    }
+
+    dirinfo->flags = 0;
 
 	if (!strlen((char *) dirname) || (strlen((char *) dirname) == 1 && dirname[0] == DIR_SEPARATOR)) {
 		if (volinfo->filesystem == FAT32) {
@@ -563,12 +575,29 @@ uint32_t DFS_GetNext(PVOLINFO volinfo, PDIRINFO dirinfo, PDIRENT dirent)
 {
 	uint32_t tempint;	// required by DFS_GetFAT
 
+	    /* Defensive sanity checks */
+    if (!volinfo || !dirinfo || !dirent) {
+        DEBUG("DFS_GetNext: NULL parameter volinfo=%p dirinfo=%p dirent=%p\n",
+              volinfo, dirinfo, dirent);
+        return DFS_ERRMISC;
+    }
+
+    if (!dirinfo->scratch) {
+        DEBUG("DFS_GetNext: dirinfo->scratch is NULL or uninitialized (dirinfo=%p)\n", dirinfo);
+        return DFS_ERRMISC;
+    }
+
+    if (volinfo->secperclus == 0) {
+        DEBUG("DFS_GetNext: volinfo->secperclus == 0 (volinfo=%p)\n", volinfo);
+        return DFS_ERRMISC;
+    }
+
 	// Do we need to read the next sector of the directory?
 	if (dirinfo->currententry >= SECTOR_SIZE / sizeof(DIRENT)) {
 		dirinfo->currententry = 0;
 		dirinfo->currentsector++;
 
-		// Root directory; special case handling
+		// Root directory; special case handling 
 		// Note that currentcluster will only ever be zero if both:
 		// (a) this is the root directory, and
 		// (b) we are on a FAT12/16 volume, where the root dir can't be expanded
@@ -589,13 +618,13 @@ uint32_t DFS_GetNext(PVOLINFO volinfo, PDIRINFO dirinfo, PDIRENT dirent)
 				if ((dirinfo->currentcluster >= 0xff7 &&  volinfo->filesystem == FAT12) ||
 				  (dirinfo->currentcluster >= 0xfff7 &&  volinfo->filesystem == FAT16) ||
 				  (dirinfo->currentcluster >= 0x0ffffff7 &&  volinfo->filesystem == FAT32)) {
-
+				  
 				  	// We are at the end of the directory chain. If this is a normal
 				  	// find operation, we should indicate that there is nothing more
 				  	// to see.
 				  	if (!(dirinfo->flags & DFS_DI_BLANKENT))
 						return DFS_EOF;
-
+					
 					// On the other hand, if this is a "find free entry" search,
 					// we need to tell the caller to allocate a new cluster
 					else
@@ -652,7 +681,7 @@ uint32_t DFS_GetFreeDirEnt(PVOLINFO volinfo, uint8_t *path, PDIRINFO di, PDIRENT
 
 	// We seek through the directory looking for an empty entry
 	// Note we are reusing tempclus as a temporary result holder.
-	tempclus = 0;
+	tempclus = 0;	
 	do {
 		tempclus = DFS_GetNext(volinfo, di, de);
 
@@ -664,7 +693,7 @@ uint32_t DFS_GetFreeDirEnt(PVOLINFO volinfo, uint8_t *path, PDIRINFO di, PDIRENT
 		// End of root directory reached
 		else if (tempclus == DFS_EOF)
 			return DFS_ERRMISC;
-
+			
 		else if (tempclus == DFS_ALLOCNEW) {
 			tempclus = DFS_GetFreeFAT(volinfo, di->scratch);
 			if (tempclus == 0x0ffffff7)
@@ -680,12 +709,12 @@ uint32_t DFS_GetFreeDirEnt(PVOLINFO volinfo, uint8_t *path, PDIRINFO di, PDIRENT
 			i = 0;
 			DFS_SetFAT(volinfo, di->scratch, &i, di->currentcluster, tempclus);
 
-			// Update DIRINFO so caller knows where to place the new file
+			// Update DIRINFO so caller knows where to place the new file			
 			di->currentcluster = tempclus;
 			di->currentsector = 0;
 			di->currententry = 1;	// since the code coming after this expects to subtract 1
-
-			// Mark newly allocated cluster as end of chain
+			
+			// Mark newly allocated cluster as end of chain			
 			switch(volinfo->filesystem) {
 				case FAT12:		tempclus = 0xff8;	break;
 				case FAT16:		tempclus = 0xfff8;	break;
@@ -836,7 +865,7 @@ uint32_t DFS_OpenFile(PVOLINFO volinfo, uint8_t *path, uint8_t mode, uint8_t *sc
 		fileinfo->cluster = cluster;
 		fileinfo->firstcluster = cluster;
 		fileinfo->filelen = 0;
-
+		
 		// write the directory entry
 		// note that we no longer have the sector containing the directory entry,
 		// tragically, so we have to re-read it
@@ -846,7 +875,7 @@ uint32_t DFS_OpenFile(PVOLINFO volinfo, uint8_t *path, uint8_t mode, uint8_t *sc
 		if (DFS_WriteSector(volinfo->unit, scratch, fileinfo->dirsector, 1))
 			return DFS_ERRMISC;
 
-		// Mark newly allocated cluster as end of chain
+		// Mark newly allocated cluster as end of chain			
 		switch(volinfo->filesystem) {
 			case FAT12:		cluster = 0xff8;	break;
 			case FAT16:		cluster = 0xfff8;	break;
@@ -901,7 +930,7 @@ uint32_t DFS_ReadFile(PFILEINFO fileinfo, uint8_t *scratch, uint8_t *buffer, uin
 			// This is the number of bytes that we actually care about in the sector
 			// just read.
 			tempreadsize = SECTOR_SIZE - (div(fileinfo->pointer, SECTOR_SIZE).rem);
-
+					
 			// Case 1A - We want the entire remainder of the sector. After this
 			// point, all passes through the read loop will be aligned on a sector
 			// boundary, which allows us to go through the optimal path 2A below.
@@ -965,7 +994,7 @@ uint32_t DFS_ReadFile(PFILEINFO fileinfo, uint8_t *scratch, uint8_t *buffer, uin
 				fileinfo->cluster = DFS_GetFAT(fileinfo->volinfo, scratch, &bytesread, fileinfo->cluster);
 		}
 	}
-
+	
 	return result;
 }
 
@@ -984,7 +1013,7 @@ void DFS_Seek(PFILEINFO fileinfo, uint32_t offset, uint8_t *scratch)
 	if (offset == fileinfo->pointer) {
 		return;
 	}
-
+	
 	// Case 0b - Don't allow the user to seek past the end of the file
 	if (offset > fileinfo->filelen) {
 		offset = fileinfo->filelen;
@@ -1008,7 +1037,7 @@ void DFS_Seek(PFILEINFO fileinfo, uint32_t offset, uint8_t *scratch)
 	// Case 3 - Seeking forwards
 	// Note _intentional_ fallthrough from Case 2 above
 
-	// Case 3a - Seek size does not cross cluster boundary -
+	// Case 3a - Seek size does not cross cluster boundary - 
 	// very simple case
 	// larwe 9/16/06 changed .rem to .quot in both div calls, bugfix
 	if (div(fileinfo->pointer, fileinfo->volinfo->secperclus * SECTOR_SIZE).quot ==
@@ -1115,7 +1144,7 @@ uint32_t DFS_WriteFile(PFILEINFO fileinfo, uint8_t *scratch, uint8_t *buffer, ui
 			// This is the number of bytes that we don't want to molest in the
 			// scratch sector just read.
 			tempsize = div(fileinfo->pointer, SECTOR_SIZE).rem;
-
+					
 			// Case 1A - We are writing the entire remainder of the sector. After
 			// this point, all passes through the read loop will be aligned on a
 			// sector boundary, which allows us to go through the optimal path
@@ -1206,7 +1235,7 @@ uint32_t DFS_WriteFile(PFILEINFO fileinfo, uint8_t *scratch, uint8_t *buffer, ui
 
 			lastcluster = fileinfo->cluster;
 			fileinfo->cluster = DFS_GetFAT(fileinfo->volinfo, scratch, &byteswritten, fileinfo->cluster);
-
+			
 			// Allocate a new cluster?
 			if (((fileinfo->volinfo->filesystem == FAT12) && (fileinfo->cluster >= 0xff8)) ||
 			  ((fileinfo->volinfo->filesystem == FAT16) && (fileinfo->cluster >= 0xfff8)) ||
@@ -1222,7 +1251,7 @@ uint32_t DFS_WriteFile(PFILEINFO fileinfo, uint8_t *scratch, uint8_t *buffer, ui
 				DFS_SetFAT(fileinfo->volinfo, scratch, &byteswritten, lastcluster, tempclus);
 				fileinfo->cluster = tempclus;
 
-				// Mark newly allocated cluster as end of chain
+				// Mark newly allocated cluster as end of chain			
 				switch(fileinfo->volinfo->filesystem) {
 					case FAT12:		tempclus = 0xff8;	break;
 					case FAT16:		tempclus = 0xfff8;	break;
@@ -1236,7 +1265,7 @@ uint32_t DFS_WriteFile(PFILEINFO fileinfo, uint8_t *scratch, uint8_t *buffer, ui
 			// No else clause is required.
 		}
 	}
-
+	
 	// Update directory entry
 		if (DFS_ReadSector(fileinfo->volinfo->unit, scratch, fileinfo->dirsector, 1))
 			return DFS_ERRMISC;

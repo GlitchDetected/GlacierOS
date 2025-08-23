@@ -4,7 +4,7 @@
 #include <paging.h>
 #include <kernel.h>
 #include <memory.h>
-#include <strings.h>
+#include <string.h>
 #include <x86.h>
 #include <isr.h>
 

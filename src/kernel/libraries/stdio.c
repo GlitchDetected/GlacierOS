@@ -2,7 +2,7 @@
 #include "../../headers/kernel.h"
 #include "../../headers/assert.h"
 #include "../../headers/heap.h"
-#include "../../headers/strings.h"
+#include "../../headers/string.h"
 
 FILE* fopen(const char* filename, const char* mode) {
     assert(mode != NULL);

@@ -1,7 +1,7 @@
 #include "../headers/process.h"
 #include "../headers/paging.h"
 #include "../headers/frames.h"
-#include "../headers/strings.h"
+#include "../headers/string.h"
 #include "../headers/kernel.h"
 #include "../headers/stdlib.h"
 #include <stdbool.h>

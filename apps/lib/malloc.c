@@ -1,7 +1,7 @@
 #include "../headers/os_api.h"
 #include "../headers/malloc.h"
 #include <stdbool.h>
-#include "../headers/strings.h"
+#include "../headers/string.h"
 
 #define END_OF_INITIALISED_HEAP PAGE_SIZE
 

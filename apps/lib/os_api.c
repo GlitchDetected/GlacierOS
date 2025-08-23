@@ -2,7 +2,7 @@
 #include "../headers/system_calls.h"
 #include <stdarg.h>
 #include "../headers/stdlib.h"
-#include "../headers/strings.h"
+#include "../headers/string.h"
 
 
 int __debug_helper_index;

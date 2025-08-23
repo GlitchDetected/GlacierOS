@@ -1,7 +1,7 @@
 #include "../headers/kv_file.h"
 #include "../headers/stdio.h"
 #include "../headers/malloc.h"
-#include "../headers/strings.h"
+#include "../headers/string.h"
 #include <ctype.h>
 #include "../headers/system_calls.h"
 #include "../headers/os_api.h"
