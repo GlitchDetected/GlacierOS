@@ -155,3 +155,10 @@ static void page_fault_handler(isr_ctx_t *regs __attribute__((unused)) ) {
     // debug_heap_dump();
     do_first_task_jump();
 }
+
+extern uint64_t stack_top;
+
+void init_kernel_stack(void) {
+    // Set the stack pointer to the top of the kernel stack
+    asm volatile("mov %0, %%rsp" :: "r"(stack_top));
+}

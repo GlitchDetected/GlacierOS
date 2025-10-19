@@ -2,6 +2,57 @@
 #define KERNEL_H
 #include <stdint.h>
 
+typedef uint64_t UINTN;
+typedef uint32_t UINT32;
+typedef uint64_t EFI_PHYSICAL_ADDRESS;
+typedef void EFI_RUNTIME_SERVICES;
+
+/* Memory descriptor structure */
+typedef struct {
+    UINT32 Type;
+    EFI_PHYSICAL_ADDRESS PhysicalStart;
+    EFI_PHYSICAL_ADDRESS VirtualStart;
+    UINTN NumberOfPages;
+    UINTN Attribute;
+} EFI_MEMORY_DESCRIPTOR;
+
+/* Graphics output protocol mode info */
+typedef struct {
+    UINT32 Version;
+    UINT32 HorizontalResolution;
+    UINT32 VerticalResolution;
+    UINT32 PixelsPerScanLine;
+} EFI_GRAPHICS_OUTPUT_MODE_INFORMATION;
+
+typedef struct {
+    UINT32 MaxMode;
+    UINT32 Mode;
+    EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *Info;
+    UINTN SizeOfInfo;
+    EFI_PHYSICAL_ADDRESS FrameBufferBase;
+    UINTN FrameBufferSize;
+} EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE;
+
+/*-----------------------------------
+  Kernel-specific types
+-----------------------------------*/
+typedef struct {
+    UINTN mm_size;
+    EFI_MEMORY_DESCRIPTOR *mm_descriptor;
+    UINTN map_key;
+    UINTN descriptor_size;
+    UINT32 descriptor_version;
+} memory_map_t;
+
+typedef struct {
+    memory_map_t mm;
+    EFI_RUNTIME_SERVICES *runtime_services;
+    EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE graphic_out_protocol;
+    UINTN custom_protocol_data;
+} boot_params_t;
+
+typedef void (*kernel_entry)(boot_params_t *params);
+
 #define KERNEL_START_MEMORY 0xFFFF800000000000
 #define KERNEL_VMA ((char*)KERNEL_START_MEMORY)
 

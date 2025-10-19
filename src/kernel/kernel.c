@@ -26,12 +26,6 @@
 #define GDT_USER_DATA   0x20
 #define GDT_TSS         0x28
 
-/**
- * @brief main program
- * This is the kernel main entry point and its main program.
- */
-void kernel_main(Boot_Info* boot_info);
-
 int serial_printf_help(unsigned c, void *ptr __UNUSED__) {
     serial_write_com(1, c);
     return 0;
@@ -59,13 +53,14 @@ void idle() {
     }
 }
 
-void kernel_main(Boot_Info* boot_info) {
+void kernel_main(boot_params_t *params) {
     init_serial();
-    init_graphics(boot_info);
+    init_graphics(params);
     init_paging();
+    init_fpu();
+    init_kernel_stack();
     init_pic();
     init_isr();
-    init_fpu();
     init_timer();
     init_keyboard();
     init_mouse();
@@ -75,5 +70,5 @@ void kernel_main(Boot_Info* boot_info) {
     create_kernel_process((void*)idle);
     create_user_process_file("/apps/desktop/desktop");
     do_first_task_jump();
-    while(1) { }
+    while (1) { x86_hlt(); }
 }

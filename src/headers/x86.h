@@ -72,16 +72,16 @@ static inline void outpd(uint16_t _port, uint32_t _data) {
                           "a" (_data));
 }
 
-static inline uint64_t x86_get_cr2(void) {
-    uint64_t rv;
+// static inline uint64_t x86_get_cr2(void) {
+//     uint64_t rv;
 
-    __asm__ __volatile__ (
-        "mov %%cr2, %0"
-        : "=r" (rv)
-    );
+//     __asm__ __volatile__ (
+//         "mov %%cr2, %0"
+//         : "=r" (rv)
+//     );
 
-    return rv;
-}
+//     return rv;
+// }
 
 static inline uint64_t x86_get_cr3(void) {
     uint64_t rv;

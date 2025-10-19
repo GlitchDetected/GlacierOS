@@ -1,44 +1,29 @@
-#ifndef BOOTLOADER_LOADER_H
-#define BOOTLOADER_LOADER_H 1
+#pragma once
 
 #include <efi.h>
-#include <efilib.h>
+#include <efiapi.h>
 
+/* Public defines ------------------------------------------------------------*/
+#define MAX_SUPPORTED_LOADER 5
+
+/* Public types --------------------------------------------------------------*/
+typedef EFI_STATUS (*kernel_loader)(UINT8 *buffer,
+                                    UINT64 size,
+                                    void **entry_point);
+
+/* Public function prototypes ------------------------------------------------*/
 /**
- * @brief Loads an ELF segment.
- * Loads an ELF program segment into memory.
- * This will read the ELF segment from the kernel binary, allocate the pages
- * necessary to load the segment into memory and then copy the segment to its
- * required physical memory address.
- * @param[in] kernel_img_file The Kernel EFI file entity to read from.
- * @param[in] segment_file_offset The segment's offset into the ELF binary.
- * @param[in] segment_file_size The segment's size in the ELF binary.
- * @param[in] segment_memory_size The size of the segment loaded into memory.
- * @param[in] segment_physical_address The physical memory address to load the segment to.
- * @return The program status.
- * @retval EFI_SUCCESS    If the function executed successfully.
- * @retval other          Any other value is an EFI error code.
+ * @brief   - uefi_load_kernel - Try to detect kernel file format and load the
+ *            kernel into memory.
+ *
+ * @param   - ImageHandle - EFI Handler.
+ * @param   - SystemTable - EFI system table to get protocols.
+ * @param   - file        - kernel filename.
+ * @param   - entry point - Founded kernel entry point.
+ *
+ * @return  - EFI_STATUS.
  */
-EFI_STATUS load_segment(IN EFI_FILE* const kernel_img_file,
-	IN EFI_PHYSICAL_ADDRESS const segment_file_offset,
-	IN UINTN const segment_file_size,
-	IN UINTN const segment_memory_size,
-	IN EFI_PHYSICAL_ADDRESS const segment_physical_address);
-
-/**
- * @brief Loads the ELF program segments.
- * Loads the Kernel ELF binary's program segments into memory.
- * @param[in] kernel_img_file The Kernel EFI file entity to read from.
- * @param[in] file_class The ELF file class, whether the program is 32 or 64bit.
- * @param[in] kernel_header_buffer The Kernel header buffer.
- * @param[in] kernel_program_headers_buffer The kernel program headers buffer.
- * @return The program status.
- * @retval EFI_SUCCESS    If the function executed successfully.
- * @retval other          Any other value is an EFI error code.
- */
-EFI_STATUS load_program_segments(IN EFI_FILE* const kernel_img_file,
-	IN Elf_File_Class const file_class,
-	IN VOID* const kernel_header_buffer,
-	IN VOID* const kernel_program_headers_buffer);
-
-#endif
+EFI_STATUS uefi_load_kernel(EFI_HANDLE ImageHandle,
+                            EFI_SYSTEM_TABLE *SystemTable,
+                            const CHAR16 *file,
+                            void **entry_point);

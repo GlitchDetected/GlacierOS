@@ -3,7 +3,6 @@
 #include <string.h>
 #include <graphics.h>
 #include <x86.h>
-#include <bootinfo.h>
 
 struct graphics_info graphics;
 
@@ -51,21 +50,21 @@ uint32_t convert_rgb_to_32bit_colour(const uint8_t r,
 /**
  * @brief Initializes graphics mode using the boot info provided by the bootloader.
  */
-void init_graphics(Boot_Info* boot_info) {
-    if (!boot_info->video_mode_info.framebuffer_pointer) {
+void init_graphics(boot_params_t* boot_info) {
+    if (!boot_info->graphic_out_protocol.FrameBufferBase) {
         HALT_AND_CATCH_FIRE("Framebuffer pointer invalid! Kernel cannot continue.\n");
     }
 
-    graphics.framebuffer   = (uint32_t*) boot_info->video_mode_info.framebuffer_pointer;
-    graphics.width         = boot_info->video_mode_info.horizontal_resolution;
-    graphics.height        = boot_info->video_mode_info.vertical_resolution;
-    graphics.pitch         = boot_info->video_mode_info.pixels_per_scaline;
-    graphics.bpp           = 32; // UEFI GOP / VBE defaults to 32-bit
+    graphics.framebuffer = (uint32_t*) boot_info->graphic_out_protocol.FrameBufferBase;
+    graphics.width       = boot_info->graphic_out_protocol.Info->HorizontalResolution;
+    graphics.height      = boot_info->graphic_out_protocol.Info->VerticalResolution;
+    graphics.pitch       = boot_info->graphic_out_protocol.Info->PixelsPerScanLine;
+    graphics.bpp         = 32; // UEFI GOP defaults to 32-bit
 
-    // clear screen
+    // Clear screen
     for (uint32_t y = 0; y < graphics.height; y++) {
         for (uint32_t x = 0; x < graphics.width; x++) {
-            graphics.framebuffer[y * graphics.pitch + x] = 0x000000;
+            graphics.framebuffer[y * graphics.pitch + x] = 0x000000; // black
         }
     }
 }

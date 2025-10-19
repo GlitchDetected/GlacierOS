@@ -1,267 +1,245 @@
 #include <efi.h>
 #include <efilib.h>
-#include <stdarg.h>
-#include <elf.h>
+#include <bootinfo.h>
+#include <loader.h>
+#include <protocol.h>
 
-#include <bootloader.h>
-#include <debug.h>
-#include <error.h>
-#include <fs.h>
-#include <graphics.h>
-#include <serial.h>
-#include <memory_map.h>
+/* Public defines ------------------------------------------------------------*/
+#define KERNEL_IMAGE_PATH L"kernel.elf"
+#define CUSTOM_PROTOCOL_DATA 123
 
-#define TARGET_SCREEN_WIDTH     1024
-#define TARGET_SCREEN_HEIGHT    768
-#define TARGET_PIXEL_FORMAT     PixelBlueGreenRedReserved8BitPerColor
+/* Public functions prototypes -----------------------------------------------*/
+EFI_GRAPHICS_OUTPUT_PROTOCOL *
+uefi_get_graphic_output_protocol();
 
-/**
- * Graphics Service instance.
- * Refer to definition in bootloader.h
- */
-Uefi_Graphics_Service graphics_service;
-/**
- * File System Service instance.
- * Refer to definition in bootloader.h
- */
-Uefi_File_System_Service file_system_service;
-/**
- * Serial IO Service instance.
- * Refer to definition in bootloader.h
- */
-Uefi_Serial_Service serial_service;
+EFI_STATUS
+uefi_install_custom_protocol(EFI_HANDLE ImageHandle);
+
+CUSTOM_PROTOCOL *
+uefi_get_custom_protocol();
+
+EFI_STATUS
+uefi_get_mm(memory_map_t *mm);
 
 /**
- * Whether to draw a test pattern to video output to test the graphics output
- * service.
+ * @brief   - Get a character from keyboards.
  */
-#define DRAW_TEST_SCREEN 0
+EFI_INPUT_KEY uefi_get_key(void);
 
-/**
- * efi_main
- */
-EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle,
-	EFI_SYSTEM_TABLE* SystemTable)
+/* Public functions ----------------------------------------------------------*/
+EFI_STATUS
+EFIAPI
+efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 {
-	/** Main bootloader application status. */
-	EFI_STATUS status;
-	/**
-	 * Graphics output protocol instance.
-	 * This protocol instance will be opened from the active console out handle.
-	 */
-	EFI_GRAPHICS_OUTPUT_PROTOCOL* graphics_output_protocol = NULL;
-	/**
-	 * The root file system entity.
-	 * This is the file root from which the kernel binary will be loaded.
-	 */
-	EFI_FILE* root_file_system;
-	/** The kernel entry point address. */
-	EFI_PHYSICAL_ADDRESS* kernel_entry_point = 0;
-	/** The EFI memory map descriptor. */
-	EFI_MEMORY_DESCRIPTOR* memory_map = NULL;
-	/** The memory map key. */
-	UINTN memory_map_key = 0;
-	/** The size of the memory map buffer. */
-	UINTN memory_map_size = 0;
-	/** The memory map descriptor size. */
-	UINTN descriptor_size;
-	/** The memory map descriptor. */
-	UINT32 descriptor_version;
-	/** Function pointer to the kernel entry point. */
-	void (*kernel_entry)(Kernel_Boot_Info* boot_info);
-	/** Boot info struct, passed to the kernel. */
-	Kernel_Boot_Info boot_info;
-	/** Input key type used to capture user input. */
-	EFI_INPUT_KEY input_key;
+  EFI_STATUS res = EFI_SUCCESS;
+  EFI_FILE_HANDLE fs_volume;
+  EFI_FILE_HANDLE file_handle;
+  UINT64 file_size = 0;
+  UINT8 *buffer = NULL;
+  boot_params_t kernel_params = {0};
+  EFI_GRAPHICS_OUTPUT_PROTOCOL *gop = NULL;
+  CUSTOM_PROTOCOL *custom_protocol = NULL;
+  void *entry_point = NULL;
 
-	// Initialise service protocols to NULL, so that we can detect if they are
-	// properly initialised in service functions.
-	serial_service.protocol = NULL;
-	file_system_service.protocol = NULL;
+  InitializeLib(ImageHandle, SystemTable);
 
-	// Initialise the UEFI lib.
-	InitializeLib(ImageHandle, SystemTable);
+  res = uefi_install_custom_protocol(ImageHandle);
+  if (EFI_ERROR(res))
+  {
+    Print(L"Failed to install custom protocol: %d\n", res);
+    goto exit;
+  }
 
-	// Disable the watchdog timer.
-	status = uefi_call_wrapper(gBS->SetWatchdogTimer, 4, 0, 0, 0, NULL);
-	if(check_for_fatal_error(status, L"Error setting watchdog timer")) {
-		return status;
-	}
+  /* 1. Configure screen colours. */
+  uefi_call_wrapper(SystemTable->ConOut->SetAttribute, 2,
+                    SystemTable->ConOut,
+                    EFI_TEXT_ATTR(EFI_BLUE, EFI_LIGHTGRAY));
 
-	// Reset console input.
-	status = uefi_call_wrapper(ST->ConIn->Reset, 2, SystemTable->ConIn, FALSE);
-	if(check_for_fatal_error(status, L"Error resetting console input")) {
-		return status;
-	}
+  uefi_call_wrapper(SystemTable->ConOut->ClearScreen, 1, SystemTable->ConOut);
 
-	// Initialise the serial service.
-	status = init_serial_service();
-	if(EFI_ERROR(status)) {
-		if(status == EFI_NOT_FOUND) {
-			#ifdef DEBUG
-				debug_print_line(L"Debug: No serial device found\n");
-			#endif
-		} else {
-			debug_print_line(L"Fatal Error: Error initialising Serial IO service\n");
+  /* 2. Load kernel. */
+  res = uefi_load_kernel(ImageHandle, SystemTable,
+                         KERNEL_IMAGE_PATH, &entry_point);
+  Print(L"DEBUG: Entry point after load: 0x%lx\n", (UINT64)entry_point);
 
-			#if PROMPT_FOR_INPUT_BEFORE_REBOOT_ON_FATAL_ERROR
-				debug_print_line(L"Press any key to reboot...");
-				wait_for_input(&input_key);
-			#endif
+  /* 3. Make kernel parameters. */
+  gop = uefi_get_graphic_output_protocol();
+  if (gop == NULL)
+  {
+    goto uefi_get_graphic_output_protocol_failure;
+  }
 
-			return status;
-		}
-	}
+  custom_protocol = uefi_get_custom_protocol();
+  if (custom_protocol)
+  {
+    kernel_params.custom_protocol_data = custom_protocol->data;
+  }
 
-	// Initialise the graphics output service.
-	status = init_graphics_output_service();
-	if(EFI_ERROR(status)) {
-		if(status == EFI_NOT_FOUND) {
-			#ifdef DEBUG
-				debug_print_line(L"Debug: No graphics device found\n");
-			#endif
-		} else {
-			debug_print_line(L"Fatal Error: Error initialising Graphics service\n");
+  kernel_params.runtime_services = SystemTable->RuntimeServices;
+  kernel_params.graphic_out_protocol = *gop->Mode;
+  /* 4. Jump to kernel. */
+  Print(L"Press any key to enter to kernel...\n");
+  uefi_get_key();
+  uefi_call_wrapper(SystemTable->ConOut->ClearScreen, 1, SystemTable->ConOut);
 
-			#if PROMPT_FOR_INPUT_BEFORE_REBOOT_ON_FATAL_ERROR
-				debug_print_line(L"Press any key to reboot...");
-				wait_for_input(&input_key);
-			#endif
+  res = uefi_get_mm(&kernel_params.mm);
+  if (EFI_ERROR(res))
+  {
+    Print(L"Failed to get memory map: %d\n", res);
+    goto uefi_get_mm_failure;
+  }
 
-			return status;
-		}
-	}
+  /* NOTE: Don't do anything between get memory and exit boot services step. */
 
+  res = uefi_call_wrapper(BS->ExitBootServices, 2,
+                          ImageHandle,
+                          kernel_params.mm.map_key);
+  if (EFI_ERROR(res))
+  {
+    Print(L"Failed to exit boot services: %d\n", res);
+    goto ExitBootServices_failure;
+  }
 
-	// Open the graphics output protocol from the handle for the active console
-	// output device and use it to draw the boot screen.
-	// The console out handle exposed by the System Table is documented in the
-	// UEFI Spec page 92.
-	status = uefi_call_wrapper(gBS->OpenProtocol, 6,
-		ST->ConsoleOutHandle, &gEfiGraphicsOutputProtocolGuid,
-		&graphics_output_protocol, ImageHandle,
-		NULL, EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
-	if(EFI_ERROR(status)) {
-		debug_print_line(L"Error: Failed to open the graphics output protocol on "
-			L"the active console output device: %s\n", get_efi_error_message(status));
-	}
+  ((kernel_entry)entry_point)(&kernel_params);
 
-	// If we were able to obtain a protocol on the current output device handle
-	// set the graphics mode to the target and draw the boot screen.
-	if(graphics_output_protocol) {
-		status = set_graphics_mode(graphics_output_protocol, TARGET_SCREEN_WIDTH,
-			TARGET_SCREEN_HEIGHT, TARGET_PIXEL_FORMAT);
-		if(EFI_ERROR(status)) {
-			// Error has already been printed.
-			return status;
-		}
+ExitBootServices_failure:
+uefi_get_mm_failure:
+uefi_get_graphic_output_protocol_failure:
+  /* TODO: cleanup memory pool. */
 
-		#if DRAW_TEST_SCREEN != 0
-			draw_test_screen(graphics_output_protocol);
-		#endif
-	}
+exit:
+  Print(L"Failed to load kernel, press any key to exit...\n");
+  uefi_get_key();
 
-	// Initialise the simple file system service.
-	// This will be used to load the kernel binary.
-	status = init_file_system_service();
-	if(EFI_ERROR(status)) {
-		// Error has already been printed.
-		return status;
-	}
-
-	status = uefi_call_wrapper(file_system_service.protocol->OpenVolume, 2,
-		file_system_service.protocol, &root_file_system);
-	if(check_for_fatal_error(status, L"Error opening root volume")) {
-		return status;
-	}
-
-	#ifdef DEBUG
-		debug_print_line(L"Debug: Loading Kernel image\n");
-	#endif
-
-	status = load_kernel_image(root_file_system, KERNEL_EXECUTABLE_PATH,
-		kernel_entry_point);
-	if(EFI_ERROR(status)) {
-		// In the case that loading the kernel image failed, the error message will
-		// have already been printed.
-		return status;
-	}
-
-	#ifdef DEBUG
-		debug_print_line(L"Debug: Set Kernel Entry Point to: '0x%llx'\n",
-			*kernel_entry_point);
-	#endif
-
-	boot_info.video_mode_info.framebuffer_pointer =
-		(VOID*)graphics_output_protocol->Mode->FrameBufferBase;
-	boot_info.video_mode_info.horizontal_resolution =
-		graphics_output_protocol->Mode->Info->HorizontalResolution;
-	boot_info.video_mode_info.vertical_resolution =
-		graphics_output_protocol->Mode->Info->VerticalResolution;
-	boot_info.video_mode_info.pixels_per_scaline =
-		graphics_output_protocol->Mode->Info->PixelsPerScanLine;
-
-	#ifdef DEBUG
-		debug_print_line(L"Debug: Closing Graphics Output Service handles\n");
-	#endif
-
-	status = close_graphic_output_service();
-	if(check_for_fatal_error(status, L"Error closing Graphics Output service")) {
-		return status;
-	}
-
-	#ifdef DEBUG
-		debug_print_line(L"Debug: Getting memory map and exiting boot services\n");
-	#endif
-
-	// Get the memory map prior to exiting the boot service.
-	status = get_memory_map((VOID**)&memory_map, &memory_map_size,
-		&memory_map_key, &descriptor_size, &descriptor_version);
-	if(EFI_ERROR(status)) {
-		// Error has already been printed.
-		return status;
-	}
-
-	debug_print_memory_map(memory_map, memory_map_size, descriptor_size);
-
-	// Get the memory map prior to exiting the boot service.
-	status = get_memory_map((VOID**)&memory_map, &memory_map_size,
-		&memory_map_key, &descriptor_size, &descriptor_version);
-	if(EFI_ERROR(status)) {
-		// Error has already been printed.
-		return status;
-	}
-
-	status = uefi_call_wrapper(gBS->ExitBootServices, 2,
-		ImageHandle, memory_map_key);
-	if(check_for_fatal_error(status, L"Error exiting boot services")) {
-		return status;
-	}
-
-	// Set kernel boot info.
-	boot_info.memory_map = memory_map;
-	boot_info.memory_map_size = memory_map_size;
-	boot_info.memory_map_descriptor_size = descriptor_size;
-
-	// Cast pointer to kernel entry.
-	kernel_entry = (void (*)(Kernel_Boot_Info*))*kernel_entry_point;
-	// Jump to kernel entry.
-	kernel_entry(&boot_info);
-
-	// Return an error if this code is ever reached.
-	return EFI_LOAD_ERROR;
+  return res;
 }
 
+EFI_GRAPHICS_OUTPUT_PROTOCOL *
+uefi_get_graphic_output_protocol()
+{
+  EFI_STATUS status = EFI_SUCCESS;
+  EFI_GUID guid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
+  EFI_GRAPHICS_OUTPUT_PROTOCOL *gop = NULL;
 
-/**
- * wait_for_input
- */
-EFI_STATUS wait_for_input(OUT EFI_INPUT_KEY* key) {
-	/** The program status. */
-	EFI_STATUS status;
-	do {
-		status = uefi_call_wrapper(ST->ConIn->ReadKeyStroke, 2, ST->ConIn, key);
-	} while(status == EFI_NOT_READY);
+  status = uefi_call_wrapper(BS->LocateProtocol, 3, &guid, NULL, (void **)&gop);
+  if (EFI_ERROR(status))
+  {
+    Print(L"Failed to locate graphics output protocol: %d\n", status);
+    return NULL;
+  }
 
-	return status;
+  return gop;
+}
+
+EFI_INPUT_KEY uefi_get_key(void)
+{
+  EFI_EVENT events[1];
+  EFI_INPUT_KEY key;
+  UINTN index = 0;
+
+  key.ScanCode = 0;
+  key.UnicodeChar = u'\0';
+  events[0] = ST->ConIn->WaitForKey;
+
+  uefi_call_wrapper(BS->WaitForEvent, 3, 1, events, &index);
+
+  if (index == 0)
+  {
+    uefi_call_wrapper(ST->ConIn->ReadKeyStroke, 2, ST->ConIn, &key);
+  }
+
+  return key;
+}
+
+EFI_STATUS
+uefi_get_mm(memory_map_t *mm)
+{
+  EFI_STATUS res = EFI_SUCCESS;
+
+  /* 1. Get memory size by pass size 0. */
+  res = uefi_call_wrapper(BS->GetMemoryMap, 5,
+                          &mm->mm_size,
+                          mm->mm_descriptor,
+                          &mm->map_key,
+                          &mm->descriptor_size,
+                          &mm->descriptor_version);
+  if (EFI_ERROR(res) && res != EFI_BUFFER_TOO_SMALL)
+  {
+    return res;
+  }
+
+  /* 2. Update new memory size to get. */
+  mm->mm_size += mm->descriptor_size * 2;
+  res = uefi_call_wrapper(BS->AllocatePool, 3,
+                          EfiLoaderData,
+                          mm->mm_size,
+                          &mm->mm_descriptor);
+  if (EFI_ERROR(res))
+  {
+    return res;
+  }
+
+  /* 3. Get memory map. */
+  res = uefi_call_wrapper(BS->GetMemoryMap, 5,
+                          &mm->mm_size,
+                          mm->mm_descriptor,
+                          &mm->map_key,
+                          &mm->descriptor_version,
+                          &mm->descriptor_size);
+  if (EFI_ERROR(res))
+  {
+    uefi_call_wrapper(BS->FreePool, 1, mm->mm_descriptor);
+  }
+
+  return res;
+}
+
+EFI_STATUS
+uefi_install_custom_protocol(EFI_HANDLE ImageHandle)
+{
+  EFI_STATUS res = EFI_SUCCESS;
+  CUSTOM_PROTOCOL *custom_protocol = NULL;
+  EFI_GUID guid = EFI_CUSTOM_PROTOCOL_GUID;
+
+  res = uefi_call_wrapper(BS->AllocatePool, 3,
+                          EfiBootServicesData,
+                          sizeof(CUSTOM_PROTOCOL),
+                          (VOID **)&custom_protocol);
+  if (EFI_ERROR(res))
+  {
+    return res;
+  }
+
+  custom_protocol->data = CUSTOM_PROTOCOL_DATA;
+
+  res = uefi_call_wrapper(BS->InstallProtocolInterface, 4,
+                          &ImageHandle,
+                          &guid,
+                          EFI_NATIVE_INTERFACE,
+                          custom_protocol);
+  if (EFI_ERROR(res))
+  {
+    uefi_call_wrapper(BS->FreePool, 1, custom_protocol);
+  }
+
+  return res;
+}
+
+CUSTOM_PROTOCOL *
+uefi_get_custom_protocol()
+{
+
+  EFI_STATUS status = EFI_SUCCESS;
+  EFI_GUID guid = EFI_CUSTOM_PROTOCOL_GUID;
+  CUSTOM_PROTOCOL *custom_protocol = NULL;
+
+  status = uefi_call_wrapper(BS->LocateProtocol, 3,
+                             &guid, NULL, (void **)&custom_protocol);
+  if (EFI_ERROR(status))
+  {
+    Print(L"Failed to locate custom protocol: %d\n", status);
+    return NULL;
+  }
+
+  return custom_protocol;
 }

@@ -2,13 +2,13 @@
 # $< = first dependency
 # $^ = all dependencies
 
-TARGET   = x86_64-elf
-CC       = $(TARGET)-gcc
-LD       = $(TARGET)-ld
-ASM       = $(TARGET)-as
+ARCH := x86_64
+CC   := ${ARCH}-elf-gcc
+LD       = $(ARCH)-elf-ld
+ASM       = $(ARCH)-elf-as
 QEMU_ARCH = qemu-system-x86_64
 
-DISK_IMG_SIZE := 2880
+DISK_IMG_SIZE := 262144
 DISK_IMG = bin/disk.img
 ISO_FILE=bin/glacier-os.iso
 
@@ -48,6 +48,17 @@ kernel:
 appsDir:
 	$(MAKE) -C apps all
 
+lib:
+	cd gnu-efi && \
+	export CROSS_COMPILE="${ARCH}-elf-" && \
+	export CC="${ARCH}-elf-gcc" && \
+	export AS="${ARCH}-elf-as" && \
+	export AR="${ARCH}-elf-ar" && \
+	export LD="${ARCH}-elf-ld" && \
+	export OBJCOPY="${ARCH}-elf-objcopy" && \
+	export CFLAGS="-I/usr/local/include" && \
+	$(MAKE)
+
 dirs:
 	mkdir -p bin
 	mkdir -p bin/disk
@@ -59,13 +70,17 @@ dirs:
 	$(ASM) -o $@ $<
 
 install: 
-	# create uefi boot disk image in dos format
-	dd if=/dev/zero of=${DISK_IMG} bs=1k count=${DISK_IMG_SIZE}
-	mformat -i ${DISK_IMG} -f ${DISK_IMG_SIZE} ::
+	# Create UEFI boot disk image in DOS format
+	dd if=/dev/zero of=${DISK_IMG} bs=512 count=${DISK_IMG_SIZE}
+
+	mformat -i ${DISK_IMG} ::
+
+	# Create EFI/BOOT directories
 	mmd -i ${DISK_IMG} ::/EFI
 	mmd -i ${DISK_IMG} ::/EFI/BOOT
-	# Copy the bootloader to the boot partition.
-	mcopy -i ${DISK_IMG} ${BOOTLOADER_BINARY} ::/efi/boot/bootx64.efi
+
+	# Copy the bootloader and kernel to the boot partition
+	mcopy -i ${DISK_IMG} ${BOOTLOADER_BINARY} ::/EFI/BOOT/bootx64.EFI
 	mcopy -i ${DISK_IMG} ${KERNEL_BIN} ::/kernel.elf
 
 ${OVMF_VARS}:
@@ -73,13 +88,8 @@ ${OVMF_VARS}:
 	chmod +w $(OVMF_VARS)
 
 debug:
-# Offset = RIP - ImageBase
-#        = 0x62F7C04 - 0x62F2000
-#        = 0x0005C04
-# ELF_VMA = KERNEL_PHYS_START + Offset
-#         = 0x100000 + 0x5C04
-#         = 0x105C04
-
+	greadelf -h bin/kernel.elf
+	greadelf -l bin/kernel.elf
 	x86_64-elf-addr2line -e bin/kernel.elf -f -C
 
 run-debug: ${DISK_IMG} ${OVMF_VARS}

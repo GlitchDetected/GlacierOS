@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <bootinfo.h>
+#include <kernel.h>
 
 struct graphics_info {
     uint32_t* framebuffer;
@@ -64,6 +65,6 @@ uint32_t convert_rgb_to_32bit_colour(const uint8_t r,
 /**
  * Initialise framebuffer info from the bootloader Boot_Info.
  */
-void init_graphics(Boot_Info* boot_info);
+void init_graphics(boot_params_t *params);
 
 #endif

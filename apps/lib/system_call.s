@@ -3,11 +3,12 @@
 .type syscall, @function
 
 syscall:
-    movq %rdi, %rax      # Syscall number -> rax
-    movq %rsi, %rdi      # shift arg1 -> rdi
-    movq %rdx, %rsi      # shift arg2 -> rsi
-    movq %rcx, %rdx      # shift arg3 -> rdx
-    movq %r8,  %rcx      # shift arg4 -> rcx
-    movq %r9,  %r8       # shift arg5 -> r8
-    int $0x80            # Do the syscall
+    movq %rdi, %rax      # syscall number
+    movq %rsi, %rdi      # arg1
+    movq %rdx, %rsi      # arg2
+    movq %rcx, %rdx      # arg3
+    movq %r8,  %r10      # arg4
+    movq %r9,  %r8       # arg5
+    syscall
     ret
+

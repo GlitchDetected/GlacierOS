@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include "pic.h"
 
+void init_kernel_stack(void);
+
 // exceptions, cf. http://wiki.osdev.org/Exceptions
 #define EXCEPTION_DE 0
 #define EXCEPTION_DB 1

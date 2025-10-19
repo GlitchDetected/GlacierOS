@@ -5,7 +5,7 @@ bin/
 
 *.icloud
 .DS_Store
-.vscode
+.vscode/
 .idea/
 Session.vim
 qemu_debug.log
@@ -19,3 +19,7 @@ qemu_debug.log
 *.hex
 *.o
 *.bin
+*.img
+*.so
+*.efi
+*.elf

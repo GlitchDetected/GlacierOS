@@ -4,18 +4,16 @@ MAKEFLAGS += --warn-undefined-variables
 MAKEFLAGS += --no-builtin-rules
 
 ARCH := x86_64
-CC   := ${ARCH}-elf-gcc
-LD       = $(ARCH)-elf-ld
-ASM       = $(ARCH)-elf-as
-OBJCOPY := ${ARCH}-elf-objcopy
+CC   := $(ARCH)-elf-gcc
+LD   := $(ARCH)-elf-ld
+OBJCOPY := $(ARCH)-elf-objcopy
 
 BUILD_DIR  := ../../bin
+GNU_EFI_DIR := ../../gnu-efi
 
-EFI_INC_DIR  := /usr/local/include/efi
+EFI_INC_DIR  := ${GNU_EFI_DIR}/inc
 INCLUDE_DIRS := ${EFI_INC_DIR}    \
 	${EFI_INC_DIR}/${ARCH}          \
-	${EFI_INC_DIR}/inc       \
-	${EFI_INC_DIR}/lib         \
 	../headers/bootloader
 
 # The full list of includes in correct format for gcc
@@ -41,11 +39,12 @@ CFLAGS := ${INCLUDE_FLAG}   \
 # export CFLAGS='-I /usr/local/include'
 # make
 # sudo ARCH=x86_64 make install
-LIB          := /usr/local/lib
-EFI_LIB      := /usr/local/lib
-EFI_CRT_OBJS := ${EFI_LIB}/crt0-efi-${ARCH}.o
-EFI_LDS      := ${EFI_LIB}/elf_${ARCH}_efi.lds
-LDFLAGS      := -nostdlib    \
+LIB      := ${GNU_EFI_DIR}/${ARCH}/gnuefi
+EFI_LIB      := ${GNU_EFI_DIR}/${ARCH}/lib
+EFI_CRT_OBJS := ${GNU_EFI_DIR}/${ARCH}/gnuefi/crt0-efi-${ARCH}.o
+EFI_LDS      := ${GNU_EFI_DIR}/gnuefi/elf_${ARCH}_efi.lds
+
+LDFLAGS      := -nostdlib        \
 	-znocombreloc              \
 	-T ${EFI_LDS}              \
 	-shared                    \
@@ -53,19 +52,12 @@ LDFLAGS      := -nostdlib    \
 	-L ${EFI_LIB}              \
 	-L ${LIB} ${EFI_CRT_OBJS}
 
-C_SOURCES := elf.c    \
-	debug.c             \
-	error.c             \
-	fs.c                \
-	graphics.c          \
-	loader.c            \
-	memory_map.c        \
-	main.c              \
-	serial.c
+SRC_DIRS = .
 
-AS_SOURCES :=
+C_SRCS := $(foreach dir,$(SRC_DIRS),$(wildcard $(dir)/*.c))
+S_SRCS := $(foreach dir,$(SRC_DIRS),$(wildcard $(dir)/*.s))
 
-OBJECTS := ${C_SOURCES:.c=.o} ${AS_SOURCES:.S=.o}
+OBJECTS := ${C_SRCS:.c=.o} ${S_SRCS:.S=.o}
 
 # The bootloader is initially compiled into a shared lib in ELF format. GNU-EFI links
 # the lib in a special format as to be easily copied into a PE32+ compatible executable
@@ -73,7 +65,6 @@ OBJECTS := ${C_SOURCES:.c=.o} ${AS_SOURCES:.S=.o}
 BINARY_ELF := ${BUILD_DIR}/bootx64.so
 # This is the ELF shared lib copied into the PE32+ format.
 BINARY_EFI := ${BUILD_DIR}/bootx64.efi
-
 
 .PHONY: all clean
 

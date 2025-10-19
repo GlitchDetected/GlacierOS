@@ -32,7 +32,7 @@ install:
 
 clean:
 	@echo "Cleaning build artifacts in $(PWD)"
-	@find . -type f -name '*.o' -exec rm -f {} +
+	rm -f ${OBJ_SRCS}
 	@rm -f *.bin *.elf *.dis
 
 debug:

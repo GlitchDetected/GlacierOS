@@ -1,393 +1,102 @@
+#include <elf_types.h>
 #include <efi.h>
 #include <efilib.h>
 
-#include <bootloader.h>
-#include <debug.h>
-#include <elf.h>
-#include <error.h>
+/* Private defines -----------------------------------------------------------*/
+#define PAGE_SIZE 4096
+#define KERNEL_PHYS_START 0x100000
 
+/* Private function prototypes -----------------------------------------------*/
+void print_elf_info(UINT8 *buffer);
 
-/**
- * print_elf_file_info
- */
-VOID print_elf_file_info(IN VOID* const header_ptr,
-	IN VOID* const program_headers_ptr)
+/* Private functions ---------------------------------------------------------*/
+void print_elf_info(UINT8 *buffer)
 {
-	/**
-	 * The header pointer cast to a 32bit ELF Header so that we can read the
-	 * header and determine the file type. Then cast to a 64bit header for
-	 * specific fields if necessary.
-	 */
-	Elf32_Ehdr* header = (Elf32_Ehdr*)header_ptr;
-	Elf64_Ehdr* header64 = (Elf64_Ehdr*)header_ptr;
+    elf64_header_t *header = (elf64_header_t *)buffer;
+    elf64_program_header_t *program_header =
+        (elf64_program_header_t *)(buffer + header->e_phoff);
 
-	debug_print_line(L"Debug: ELF Header Info:\n");
+    Print(L"ELF type: %d, machine: %d, entry: 0x%lx\n",
+          header->e_type,
+          header->e_machine,
+          header->e_entry);
 
-	debug_print_line(L"  Magic:                    ");
-	UINTN i = 0;
-	for(i = 0; i < 4; i++) {
-		debug_print_line(L"0x%x ", header->e_ident[i]);
-	}
-	debug_print_line(L"\n");
-
-	debug_print_line(L"  Class:                    ");
-	if(header->e_ident[EI_CLASS] == ELF_FILE_CLASS_32) {
-		debug_print_line(L"32bit");
-	} else if(header->e_ident[EI_CLASS] == ELF_FILE_CLASS_64) {
-		debug_print_line(L"64bit");
-	}
-	debug_print_line(L"\n");
-
-	debug_print_line(L"  Endianness:               ");
-	if(header->e_ident[EI_DATA] == 1) {
-		debug_print_line(L"Little-Endian");
-	} else if(header->e_ident[EI_DATA] == 2) {
-		debug_print_line(L"Big-Endian");
-	}
-	debug_print_line(L"\n");
-
-	debug_print_line(L"  Version:                  0x%x\n",
-		header->e_ident[EI_VERSION]);
-
-	debug_print_line(L"  OS ABI:                   ");
-	if(header->e_ident[EI_OSABI] == 0x00) {
-		debug_print_line(L"System V");
-	} else if(header->e_ident[EI_OSABI] == 0x01) {
-		debug_print_line(L"HP-UX");
-	} else if(header->e_ident[EI_OSABI] == 0x02) {
-		debug_print_line(L"NetBSD");
-	} else if(header->e_ident[EI_OSABI] == 0x03) {
-		debug_print_line(L"Linux");
-	} else if(header->e_ident[EI_OSABI] == 0x04) {
-		debug_print_line(L"GNU Hurd");
-	} else if(header->e_ident[EI_OSABI] == 0x06) {
-		debug_print_line(L"Solaris");
-	} else if(header->e_ident[EI_OSABI] == 0x07) {
-		debug_print_line(L"AIX");
-	} else if(header->e_ident[EI_OSABI] == 0x08) {
-		debug_print_line(L"IRIX");
-	} else if(header->e_ident[EI_OSABI] == 0x09) {
-		debug_print_line(L"FreeBSD");
-	} else if(header->e_ident[EI_OSABI] == 0x0A) {
-		debug_print_line(L"Tru64");
-	} else if(header->e_ident[EI_OSABI] == 0x0B) {
-		debug_print_line(L"Novell Modesto");
-	} else if(header->e_ident[EI_OSABI] == 0x0C) {
-		debug_print_line(L"OpenBSD");
-	} else if(header->e_ident[EI_OSABI] == 0x0D) {
-		debug_print_line(L"OpenVMS");
-	} else if(header->e_ident[EI_OSABI] == 0x0E) {
-		debug_print_line(L"NonStop Kernel");
-	} else if(header->e_ident[EI_OSABI] == 0x0F) {
-		debug_print_line(L"AROS");
-	} else if(header->e_ident[EI_OSABI] == 0x10) {
-		debug_print_line(L"Fenix OS");
-	} else if(header->e_ident[EI_OSABI] == 0x11) {
-		debug_print_line(L"CloudABI");
-	}
-	debug_print_line(L"\n");
-
-	debug_print_line(L"  File Type:                ");
-	if(header->e_type == 0x00) {
-		debug_print_line(L"None");
-	} else if(header->e_type == 0x01) {
-		debug_print_line(L"Relocatable");
-	} else if(header->e_type == 0x02) {
-		debug_print_line(L"Executable");
-	} else if(header->e_type == 0x03) {
-		debug_print_line(L"Dynamic");
-	} else {
-		debug_print_line(L"Other");
-	}
-	debug_print_line(L"\n");
-
-	debug_print_line(L"  Machine Type:             ");
-	if(header->e_machine == 0x00) {
-		debug_print_line(L"No specific instruction set");
-	} else if(header->e_machine == 0x02) {
-		debug_print_line(L"SPARC");
-	} else if(header->e_machine == 0x03) {
-		debug_print_line(L"x86");
-	} else if(header->e_machine == 0x08) {
-		debug_print_line(L"MIPS");
-	} else if(header->e_machine == 0x14) {
-		debug_print_line(L"PowerPC");
-	} else if(header->e_machine == 0x16) {
-		debug_print_line(L"S390");
-	} else if(header->e_machine == 0x28) {
-		debug_print_line(L"ARM");
-	} else if(header->e_machine == 0x2A) {
-		debug_print_line(L"SuperH");
-	} else if(header->e_machine == 0x32) {
-		debug_print_line(L"IA-64");
-	} else if(header->e_machine == 0x3E) {
-		debug_print_line(L"x86-64");
-	} else if(header->e_machine == 0xB7) {
-		debug_print_line(L"AArch64");
-	} else if(header->e_machine == 0xF3) {
-		debug_print_line(L"RISC-V");
-	}
-	debug_print_line(L"\n");
-
-	if(header->e_ident[EI_CLASS] == ELF_FILE_CLASS_32) {
-		debug_print_line(L"  Entry point:              0x%lx\n", header->e_entry);
-		debug_print_line(L"  Program header offset:    0x%lx\n", header->e_phoff);
-		debug_print_line(L"  Section header offset:    0x%lx\n", header->e_shoff);
-		debug_print_line(L"  Program header count:     %u\n", header->e_phnum);
-		debug_print_line(L"  Section header count:     %u\n", header->e_shnum);
-
-		Elf32_Phdr* program_headers = program_headers_ptr;
-
-		debug_print_line(L"\nProgram Headers:\n");
-		UINTN p = 0;
-		for(p = 0; p < header->e_phnum; p++) {
-			debug_print_line(L"[%u]:\n", p);
-			debug_print_line(L"  p_type:      0x%lx\n", program_headers[p].p_type);
-			debug_print_line(L"  p_offset:    0x%lx\n", program_headers[p].p_offset);
-			debug_print_line(L"  p_vaddr:     0x%lx\n", program_headers[p].p_vaddr);
-			debug_print_line(L"  p_paddr:     0x%lx\n", program_headers[p].p_paddr);
-			debug_print_line(L"  p_filesz:    0x%lx\n", program_headers[p].p_filesz);
-			debug_print_line(L"  p_memsz:     0x%lx\n", program_headers[p].p_memsz);
-			debug_print_line(L"  p_flags:     0x%lx\n", program_headers[p].p_flags);
-			debug_print_line(L"  p_align:     0x%lx\n", program_headers[p].p_align);
-			debug_print_line(L"\n");
-		}
-	} else if(header->e_ident[EI_CLASS] == ELF_FILE_CLASS_64) {
-		debug_print_line(L"  Entry point:              0x%llx\n", header64->e_entry);
-		debug_print_line(L"  Program header offset:    0x%llx\n", header64->e_phoff);
-		debug_print_line(L"  Section header offset:    0x%llx\n", header64->e_shoff);
-		debug_print_line(L"  Program header count:     %u\n", header64->e_phnum);
-		debug_print_line(L"  Section header count:     %u\n", header64->e_shnum);
-
-		Elf64_Phdr* program_headers = program_headers_ptr;
-
-		debug_print_line(L"\nDebug: Program Headers:\n");
-		UINTN p = 0;
-		for(p = 0; p < header64->e_phnum; p++) {
-			debug_print_line(L"[%u]:\n", p);
-			debug_print_line(L"  p_type:      0x%lx\n",  program_headers[p].p_type);
-			debug_print_line(L"  p_flags:     0x%lx\n",  program_headers[p].p_flags);
-			debug_print_line(L"  p_offset:    0x%llx\n", program_headers[p].p_offset);
-			debug_print_line(L"  p_vaddr:     0x%llx\n", program_headers[p].p_vaddr);
-			debug_print_line(L"  p_paddr:     0x%llx\n", program_headers[p].p_paddr);
-			debug_print_line(L"  p_filesz:    0x%llx\n", program_headers[p].p_filesz);
-			debug_print_line(L"  p_memsz:     0x%llx\n", program_headers[p].p_memsz);
-			debug_print_line(L"  p_align:     0x%llx\n", program_headers[p].p_align);
-			debug_print_line(L"\n");
-		}
-	}
+    /* Print all segment info. */
+    for (INT32 i = 0; i < header->e_phnum; i++, program_header++)
+    {
+        Print(L"ELF section:%d type: 0x%x, flag: 0x%x, "
+              "offset: 0x%lx, paddr: 0x%lx, vaddr: 0x%lx, filesz: 0x%lx, memsz: 0x%lx\n",
+              i,
+              program_header->p_type,
+              program_header->p_flags64,
+              program_header->p_offset,
+              program_header->p_paddr,
+              program_header->p_vaddr,
+              program_header->p_filesz,
+              program_header->p_memsz);
+    }
 }
 
-
-/**
- * read_elf_file
- */
-EFI_STATUS read_elf_file(IN EFI_FILE* const kernel_img_file,
-	IN Elf_File_Class const file_class,
-	OUT VOID** kernel_header_buffer,
-	OUT VOID** kernel_program_headers_buffer)
+/* Public functions ----------------------------------------------------------*/
+EFI_STATUS load_elf_kernel(UINT8 *buffer,
+                           UINT64 size,
+                           void **entry_point)
 {
-	/** The number of bytes to read into the read buffers. */
-	UINTN buffer_read_size = 0;
-	/** The offset of the program headers in the executable. */
-	UINTN program_headers_offset = 0;
+    EFI_STATUS res = EFI_SUCCESS;
+    elf64_header_t *header = (elf64_header_t *)buffer;
+    elf64_program_header_t *program_header = NULL;
 
-	// Reset to start of file.
-	#ifdef DEBUG
-		debug_print_line(L"Debug: Setting file pointer to "
-			"read executable header\n");
-	#endif
+    if (header->e_ident.ei_magic0 != 0x7F ||
+        header->e_ident.ei_magic1 != 'E' ||
+        header->e_ident.ei_magic2 != 'L' ||
+        header->e_ident.ei_magic3 != 'F')
+    {
+        Print(L"kernel is not in ELF format.\n");
+        return EFI_LOAD_ERROR;
+    }
 
-	EFI_STATUS status = uefi_call_wrapper(kernel_img_file->SetPosition, 2,
-		kernel_img_file, 0);
-	if(EFI_ERROR(status)) {
-		debug_print_line(L"Error: Error setting file pointer position: %s\n",
-			get_efi_error_message(status));
+    /* Accept both EXEC and DYN types */
+    if (header->e_type != ELF64_E_TYPE_ET_EXEC && 
+        header->e_type != ELF64_E_TYPE_ET_DYN)
+    {
+        Print(L"ELF type is not supported: %d\n", header->e_type);
+        return EFI_LOAD_ERROR;
+    }
 
-		return status;
-	}
+    Print(L"Loading ELF kernel...\n");
+    print_elf_info(buffer);
 
-	if(file_class == ELF_FILE_CLASS_32) {
-		buffer_read_size = sizeof(Elf32_Ehdr);
-	} else if(file_class == ELF_FILE_CLASS_64) {
-		buffer_read_size = sizeof(Elf64_Ehdr);
-	} else {
-		debug_print_line(L"Error: Invalid file class\n", status);
-		return EFI_INVALID_PARAMETER;
-	}
+    /* Load each PT_LOAD segment to its physical address */
+    program_header = (elf64_program_header_t *)(buffer + header->e_phoff);
+    for (INT32 i = 0; i < header->e_phnum; i++, program_header++)
+    {
+        if (program_header->p_type == ELF64_P_PT_LOAD)
+        {
+            UINT8 *dst = (UINT8 *)(UINTN)program_header->p_paddr;
+            UINT8 *src = (UINT8 *)buffer + program_header->p_offset;
+            UINT64 filesz = program_header->p_filesz;
+            UINT64 memsz = program_header->p_memsz;
 
-	#ifdef DEBUG
-		debug_print_line(L"Debug: Allocating '0x%lx' for ", buffer_read_size);
-		debug_print_line(L"kernel executable header buffer\n");
-	#endif
+            Print(L"Loading segment %d to paddr: 0x%lx, filesz: 0x%lx, memsz: 0x%lx\n",
+                  i, program_header->p_paddr, filesz, memsz);
 
-	status = uefi_call_wrapper(gBS->AllocatePool, 3,
-		EfiLoaderData, buffer_read_size, kernel_header_buffer);
-	if(EFI_ERROR(status)) {
-		debug_print_line(L"Error: Error allocating kernel header buffer: %s\n",
-			get_efi_error_message(status));
+            /* Copy file content */
+            uefi_call_wrapper(CopyMem, 3, dst, src, filesz);
 
-		return status;
-	}
+            /* Zero out BSS (memsz > filesz) */
+            if (memsz > filesz)
+            {
+                uefi_call_wrapper(SetMem, 3, dst + filesz, memsz - filesz, 0);
+                Print(L"Zeroed BSS: 0x%lx bytes at 0x%lx\n", 
+                      memsz - filesz, (UINT64)(dst + filesz));
+            }
+        }
+    }
 
-	#ifdef DEBUG
-		debug_print_line(L"Debug: Reading kernel executable header\n");
-	#endif
+    /* Set entry point from ELF header */
+    *entry_point = (VOID *)(UINTN)header->e_entry;
 
-	status = uefi_call_wrapper(kernel_img_file->Read, 3,
-		kernel_img_file, &buffer_read_size, *kernel_header_buffer);
-	if(EFI_ERROR(status)) {
-		debug_print_line(L"Error: Error reading kernel header: %s\n",
-			get_efi_error_message(status));
+    Print(L"ELF loaded successfully, entry point: 0x%lx\n", header->e_entry);
 
-		return status;
-	}
-
-
-	if(file_class == ELF_FILE_CLASS_32) {
-		program_headers_offset = ((Elf32_Ehdr*)*kernel_header_buffer)->e_phoff;
-		buffer_read_size = sizeof(Elf32_Phdr) *
-			((Elf32_Ehdr*)*kernel_header_buffer)->e_phnum;
-	} else if(file_class == ELF_FILE_CLASS_64) {
-		program_headers_offset = ((Elf64_Ehdr*)*kernel_header_buffer)->e_phoff;
-		buffer_read_size = sizeof(Elf64_Phdr) *
-			((Elf64_Ehdr*)*kernel_header_buffer)->e_phnum;
-	}
-
-	// Read program headers.
-	#ifdef DEBUG
-		debug_print_line(L"Debug: Setting file offset to '0x%lx' "
-			"to read program headers\n", program_headers_offset);
-	#endif
-
-	status = uefi_call_wrapper(kernel_img_file->SetPosition, 2,
-		kernel_img_file, program_headers_offset);
-	if(EFI_ERROR(status)) {
-		debug_print_line(L"Error: Error setting file pointer position: %s\n",
-			get_efi_error_message(status));
-
-		return status;
-	}
-
-	// Allocate memory for program headers.
-	#ifdef DEBUG
-		debug_print_line(L"Debug: Allocating '0x%lx' for program headers buffer\n",
-			buffer_read_size);
-	#endif
-
-	status = uefi_call_wrapper(gBS->AllocatePool, 3,
-		EfiLoaderData, buffer_read_size, kernel_program_headers_buffer);
-	if(EFI_ERROR(status)) {
-		debug_print_line(L"Error: Error allocating kernel "
-			"program header buffer: %s\n", get_efi_error_message(status));
-
-		return status;
-	}
-
-	#ifdef DEBUG
-		debug_print_line(L"Debug: Reading program headers\n");
-	#endif
-
-	status = uefi_call_wrapper(kernel_img_file->Read, 3,
-		kernel_img_file, &buffer_read_size, *kernel_program_headers_buffer);
-	if(EFI_ERROR(status)) {
-		debug_print_line(L"Error: Error reading kernel program headers: %s\n",
-			get_efi_error_message(status));
-
-		return status;
-	}
-
-	return EFI_SUCCESS;
-}
-
-
-/**
- * read_elf_identity
- */
-EFI_STATUS read_elf_identity(IN EFI_FILE* const kernel_img_file,
-	OUT UINT8** elf_identity_buffer)
-{
-	/** The amount of bytes to read into the buffer. */
-	UINTN buffer_read_size = EI_NIDENT;
-
-	#ifdef DEBUG
-		debug_print_line(L"Debug: Setting file pointer position "
-			"to read ELF identity\n");
-	#endif
-
-	// Reset to the start of the file.
-	EFI_STATUS status = uefi_call_wrapper(kernel_img_file->SetPosition, 2,
-		kernel_img_file, 0);
-	if(EFI_ERROR(status)) {
-		debug_print_line(L"Error: Error resetting file pointer position: %s\n",
-			get_efi_error_message(status));
-
-		return status;
-	}
-
-	#ifdef DEBUG
-		debug_print_line(L"Debug: Allocating buffer for ELF identity\n");
-	#endif
-
-	status = uefi_call_wrapper(gBS->AllocatePool, 3,
-		EfiLoaderData, EI_NIDENT, (VOID**)elf_identity_buffer);
-	if(EFI_ERROR(status)) {
-		debug_print_line(L"Error: Error allocating kernel identity buffer: %s\n",
-			get_efi_error_message(status));
-
-		return status;
-	}
-
-	#ifdef DEBUG
-		debug_print_line(L"Debug: Reading ELF identity\n");
-	#endif
-
-	status = uefi_call_wrapper(kernel_img_file->Read, 3,
-		kernel_img_file, &buffer_read_size, (VOID*)*elf_identity_buffer);
-	if(EFI_ERROR(status)) {
-		debug_print_line(L"Error: Error reading kernel identity: %s\n",
-			get_efi_error_message(status));
-
-		return status;
-	}
-
-	return EFI_SUCCESS;
-}
-
-
-/**
- * validate_elf_identity
- */
-EFI_STATUS validate_elf_identity(IN UINT8* const elf_identity_buffer)
-{
-	if((elf_identity_buffer[EI_MAG0] != 0x7F) ||
-		(elf_identity_buffer[EI_MAG1] != 0x45) ||
-		(elf_identity_buffer[EI_MAG2] != 0x4C) ||
-		(elf_identity_buffer[EI_MAG3] != 0x46)) {
-		debug_print_line(L"Fatal Error: Invalid ELF header\n");
-		return EFI_INVALID_PARAMETER;
-	}
-
-	if(elf_identity_buffer[EI_CLASS] == ELF_FILE_CLASS_32) {
-		#ifdef DEBUG
-			debug_print_line(L"Debug: Found 32bit executable\n");
-		#endif
-	} else if(elf_identity_buffer[EI_CLASS] == ELF_FILE_CLASS_64) {
-		#ifdef DEBUG
-			debug_print_line(L"Debug: Found 64bit executable\n");
-		#endif
-	} else {
-		debug_print_line(L"Fatal Error: Invalid executable\n");
-
-		return EFI_UNSUPPORTED;
-	}
-
-	if(elf_identity_buffer[EI_DATA] != 1) {
-		debug_print_line(L"Fatal Error: Only LSB ELF executables "
-			"current supported\n");
-
-		return EFI_INCOMPATIBLE_VERSION;
-	}
-
-	return EFI_SUCCESS;
+    return EFI_SUCCESS;
 }
